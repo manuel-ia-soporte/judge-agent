@@ -1,0 +1,38 @@
+{
+  "name": "FinanceJudgeAgent",
+  "version": "1.0.0",
+  "description": "Multi-criteria evaluation agent for financial analysis",
+  "capabilities": {
+    "evaluation": [
+      "factual_accuracy",
+      "source_fidelity",
+      "regulatory_compliance",
+      "financial_reasoning",
+      "materiality_relevance",
+      "completeness",
+      "consistency",
+      "temporal_validity",
+      "risk_awareness",
+      "clarity_interpretability",
+      "uncertainty_handling",
+      "actionability"
+    ],
+    "data_sources": ["SEC_EDGAR", "market_data", "financial_statements"],
+    "protocols": ["MCP", "A2A", "HTTP"],
+    "rubric_scoring": {
+      "scales": ["0-2", "pass/fail"],
+      "methods": ["weighted", "threshold", "composite"]
+    }
+  },
+  "endpoints": {
+    "mcp": "/mcp",
+    "a2a": "/a2a/messages",
+    "health": "/health",
+    "evaluate": "/evaluate"
+  },
+  "metadata": {
+    "author": "Finance AI Team",
+    "license": "Proprietary",
+    "requires_sec_auth": true
+  }
+}

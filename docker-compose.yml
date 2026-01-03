@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  judge-agent:
+    build: .
+    ports:
+      - "8000:8000"  # MCP
+      - "8001:8001"  # A2A
+    environment:
+      - SEC_API_KEY=${SEC_API_KEY}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./cache:/app/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  # Example finance agent (optional)
+  finance-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.finance-agent
+    ports:
+      - "8002:8000"
+    environment:
+      - JUDGE_AGENT_URL=http://judge-agent:8000
+    depends_on:
+      - judge-agent
+    restart: unless-stopped
+
+volumes:
+  redis-data:
