@@ -1,9 +1,8 @@
 # agents/finance_agent/sec_analyzer.py
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any
 import re
 import statistics
-from datetime import datetime
-import pandas as pd
+from datetime import datetime, UTC
 from infrastructure.sec_edgar.edgar_parser import EdgarParser
 
 
@@ -70,7 +69,8 @@ class SECAnalyzer:
 
         return structure_analysis
 
-    def _get_rating(self, score: float) -> str:
+    @staticmethod
+    def _get_rating(score: float) -> str:
         """Convert score to rating"""
         if score >= 1.8:
             return "excellent"
@@ -107,7 +107,8 @@ class SECAnalyzer:
 
         return metrics
 
-    def _calculate_ratios_from_statements(self, statements: Dict[str, Any]) -> Dict[str, float]:
+    @staticmethod
+    def _calculate_ratios_from_statements(statements: Dict[str, Any]) -> Dict[str, float]:
         """Calculate financial ratios from statements"""
         ratios = {}
 
@@ -152,7 +153,7 @@ class SECAnalyzer:
             "risk_trend": "stable"
         }
 
-        # Extract risk section
+        # Extract the risk section
         risk_section = self.parser._extract_section(filing_text, "item_1a")
 
         if not risk_section:
@@ -264,8 +265,8 @@ class SECAnalyzer:
 
         return comparison
 
+    @staticmethod
     async def generate_investment_considerations(
-            self,
             analysis_results: Dict[str, Any]
     ) -> List[str]:
         """Generate investment considerations from analysis"""
@@ -329,10 +330,10 @@ class SECAnalyzer:
             filing_data: Dict[str, Any],
             analysis_results: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Create comprehensive analysis report"""
+        """Create a comprehensive analysis report"""
         report = {
             "metadata": {
-                "analysis_date": datetime.utcnow().isoformat(),
+                "analysis_date": datetime.now(UTC).isoformat(),
                 "filing_date": filing_data.get("filingDate", ""),
                 "company": filing_data.get("companyName", ""),
                 "cik": filing_data.get("cik", ""),
@@ -353,7 +354,8 @@ class SECAnalyzer:
 
         return report
 
-    def _generate_overall_assessment(self, analysis_results: Dict[str, Any]) -> str:
+    @staticmethod
+    def _generate_overall_assessment(analysis_results: Dict[str, Any]) -> str:
         """Generate overall assessment"""
         # Simple heuristic for overall assessment
         scores = []
@@ -386,7 +388,8 @@ class SECAnalyzer:
 
         return "Limited information available for assessment"
 
-    def _extract_key_findings(self, analysis_results: Dict[str, Any]) -> List[str]:
+    @staticmethod
+    def _extract_key_findings(analysis_results: Dict[str, Any]) -> List[str]:
         """Extract key findings from analysis"""
         findings = []
 

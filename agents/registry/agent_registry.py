@@ -1,10 +1,10 @@
 # agents/registry/agent_registry.py
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, Set
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from collections import defaultdict
-from domain.models.agent import Agent, AgentStatus, AgentCapability
+from domain.models.agent import Agent, AgentCapability
 
 
 class AgentRegistry:
@@ -28,7 +28,7 @@ class AgentRegistry:
             return False
 
         self.agents[agent.agent_id] = agent
-        self.agent_heartbeats[agent.agent_id] = datetime.utcnow()
+        self.agent_heartbeats[agent.agent_id] = datetime.now()
 
         # Index capabilities
         for capability in agent.capabilities.capabilities:

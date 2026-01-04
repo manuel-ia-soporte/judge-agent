@@ -1,14 +1,13 @@
 # agents/finance_agent/finance_agent.py
 from typing import Dict, List, Any, Optional
-import asyncio
+import re
 import logging
 from dataclasses import dataclass
-from datetime import datetime
-from domain.models.agent import Agent, AgentStatus, AgentCapabilities, AgentCapability
-from domain.models.finance import FinancialAnalysis, SECDocument
+from datetime import datetime, UTC
+from domain.models.agent import AgentStatus, AgentCapabilities, AgentCapability
+from domain.models.finance import SECDocument
 from infrastructure.sec_edgar.sec_client import SECClient
 from infrastructure.sec_edgar.edgar_parser import EdgarParser
-from contracts.finance_contracts import CompanyFinancials
 
 
 @dataclass
@@ -83,7 +82,7 @@ class FinanceAgent:
             return {
                 "company_cik": company_cik,
                 "analysis_type": analysis_type,
-                "analysis_date": datetime.utcnow().isoformat(),
+                "analysis_date": datetime.now(UTC).isoformat(),
                 "documents_analyzed": len(sec_documents),
                 "analysis": analysis,
                 "conclusions": conclusions,
@@ -121,11 +120,11 @@ class FinanceAgent:
             "companies": company_ciks,
             "comparisons": comparisons,
             "insights": insights,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(UTC).isoformat()
         }
 
     async def _parse_filing(self, filing_data: Dict[str, Any]) -> Optional[SECDocument]:
-        """Parse SEC filing into domain document"""
+        """Parse SEC filing into the domain document"""
         try:
             # Extract full filing text
             filing_text = await self.sec_client.download_filing(
@@ -142,9 +141,9 @@ class FinanceAgent:
                 company_cik=filing_data.get("cik", ""),
                 company_name=filing_data.get("companyName", ""),
                 filing_type=filing_data.get("form", ""),
-                filing_date=datetime.fromisoformat(filing_data.get("filingDate", datetime.utcnow().isoformat())),
+                filing_date=datetime.fromisoformat(filing_data.get("filingDate", datetime.now(UTC).isoformat())),
                 period_end=datetime.fromisoformat(
-                    filing_data.get("period", {}).get("end", datetime.utcnow().isoformat())),
+                    filing_data.get("period", {}).get("end", datetime.now(UTC).isoformat())),
                 document_url=filing_data.get("filingUrl", ""),
                 content=filing_data,
                 raw_text=filing_text,
@@ -155,8 +154,9 @@ class FinanceAgent:
             self.logger.warning(f"Failed to parse filing: {e}")
             return None
 
-    def _extract_filing_items(self, filing_text: str) -> Dict[str, str]:
-        """Extract items from filing text"""
+    @staticmethod
+    def _extract_filing_items(filing_text: str) -> Dict[str, str]:
+        """Extract items from the filing text"""
         items = {}
 
         # Extract standard items
@@ -256,7 +256,8 @@ class FinanceAgent:
 
         return list(set(risks))[:10]  # Return top 10 unique risks
 
-    def _generate_conclusions(self, analysis: Dict[str, Any], documents: List[SECDocument]) -> List[str]:
+    @staticmethod
+    def _generate_conclusions(analysis: Dict[str, Any], documents: List[SECDocument]) -> List[str]:
         """Generate conclusions from analysis"""
         conclusions = []
 
@@ -285,82 +286,98 @@ class FinanceAgent:
 
         return conclusions
 
-    def _analyze_financials(self, documents: List[SECDocument]) -> Dict[str, Any]:
+    @staticmethod
+    def _analyze_financials(documents: List[SECDocument]) -> Dict[str, Any]:
         """Analyze financial statements"""
         # Implementation would parse and analyze financial data
         return {}
 
-    def _analyze_risks(self, documents: List[SECDocument]) -> Dict[str, Any]:
+    @staticmethod
+    def _analyze_risks(documents: List[SECDocument]) -> Dict[str, Any]:
         """Analyze risks"""
         # Implementation would analyze risk factors
         return {}
 
-    def _analyze_operations(self, documents: List[SECDocument]) -> Dict[str, Any]:
+    @staticmethod
+    def _analyze_operations(documents: List[SECDocument]) -> Dict[str, Any]:
         """Analyze operations"""
         # Implementation would analyze operational data
         return {}
 
-    def _analyze_strategy(self, documents: List[SECDocument]) -> Dict[str, Any]:
+    @staticmethod
+    def _analyze_strategy(documents: List[SECDocument]) -> Dict[str, Any]:
         """Analyze strategy"""
         # Implementation would analyze strategic information
         return {}
 
-    def _extract_key_numbers(self, documents: List[SECDocument]) -> Dict[str, float]:
+    @staticmethod
+    def _extract_key_numbers(documents: List[SECDocument]) -> Dict[str, float]:
         """Extract key numbers"""
         # Implementation would extract key financial numbers
         return {}
 
-    def _extract_management_highlights(self, documents: List[SECDocument]) -> List[str]:
+    @staticmethod
+    def _extract_management_highlights(documents: List[SECDocument]) -> List[str]:
         """Extract management highlights"""
         # Implementation would extract highlights from MD&A
         return []
 
-    def _extract_financial_statements(self, documents: List[SECDocument]) -> Dict[str, Any]:
+    @staticmethod
+    def _extract_financial_statements(documents: List[SECDocument]) -> Dict[str, Any]:
         """Extract financial statements"""
         # Implementation would extract and parse financial statements
         return {}
 
-    def _calculate_ratios(self, documents: List[SECDocument]) -> Dict[str, float]:
+    @staticmethod
+    def _calculate_ratios(documents: List[SECDocument]) -> Dict[str, float]:
         """Calculate financial ratios"""
         # Implementation would calculate ratios
         return {}
 
-    def _analyze_financial_trends(self, documents: List[SECDocument]) -> Dict[str, Any]:
+    @staticmethod
+    def _analyze_financial_trends(documents: List[SECDocument]) -> Dict[str, Any]:
         """Analyze financial trends"""
         # Implementation would analyze trends
         return {}
 
-    def _assess_liquidity(self, documents: List[SECDocument]) -> str:
+    @staticmethod
+    def _assess_liquidity(documents: List[SECDocument]) -> str:
         """Assess liquidity"""
         # Implementation would assess liquidity
         return "adequate"
 
-    def _assess_profitability(self, documents: List[SECDocument]) -> str:
+    @staticmethod
+    def _assess_profitability(documents: List[SECDocument]) -> str:
         """Assess profitability"""
         # Implementation would assess profitability
         return "profitable"
 
-    def _assess_risk_level(self, documents: List[SECDocument]) -> str:
+    @staticmethod
+    def _assess_risk_level(documents: List[SECDocument]) -> str:
         """Assess risk level"""
         # Implementation would assess risk level
         return "medium"
 
-    def _identify_mitigations(self, documents: List[SECDocument]) -> List[str]:
+    @staticmethod
+    def _identify_mitigations(documents: List[SECDocument]) -> List[str]:
         """Identify risk mitigations"""
         # Implementation would identify mitigations
         return []
 
-    def _analyze_risk_trends(self, documents: List[SECDocument]) -> Dict[str, Any]:
+    @staticmethod
+    def _analyze_risk_trends(documents: List[SECDocument]) -> Dict[str, Any]:
         """Analyze risk trends"""
         # Implementation would analyze risk trends
         return {}
 
-    def _extract_comparison_metrics(self, analysis: Dict[str, Any], metrics: List[str]) -> Dict[str, Any]:
+    @staticmethod
+    def _extract_comparison_metrics(analysis: Dict[str, Any], metrics: List[str]) -> Dict[str, Any]:
         """Extract metrics for comparison"""
         # Implementation would extract comparison metrics
         return {metric: 0.0 for metric in metrics}
 
-    def _generate_comparison_insights(self, comparisons: Dict[str, Any]) -> List[str]:
+    @staticmethod
+    def _generate_comparison_insights(comparisons: Dict[str, Any]) -> List[str]:
         """Generate comparison insights"""
         # Implementation would generate insights
         return []
