@@ -1,5 +1,4 @@
 # domain/models/enums.py
-# domain/models/enums.py
 """Domain enums for the financial analysis system"""
 
 from enum import Enum

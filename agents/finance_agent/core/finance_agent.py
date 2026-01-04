@@ -3,11 +3,9 @@ from typing import Dict, Any, List
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, UTC
-from domain.models.entities import AnalysisType
 from application.use_cases.analyze_company_use_case import AnalyzeCompanyUseCase
 from application.use_cases.compare_companies_use_case import CompareCompaniesUseCase
 from .agent_capabilities import AgentCapabilities
-from ..analyzers.analyzer_interface import Analyzer
 from ..factories.analyzer_factory import AnalyzerFactory
 from ..strategies.analysis_strategy import AnalysisStrategy, ComprehensiveStrategy, FinancialStrategy, RiskStrategy
 
@@ -39,7 +37,7 @@ class FinanceAgent:
             company_cik: str,
             analysis_type: str = "comprehensive"
     ) -> Dict[str, Any]:
-        """Analyze a company using use cases"""
+        """Analyze a company using 'use cases'"""
         self.logger.info(f"Starting analysis for CIK: {company_cik}")
 
         try:

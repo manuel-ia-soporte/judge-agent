@@ -1,9 +1,9 @@
 # infrastructure/a2a/message_broker.py
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Set
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from collections import defaultdict
 from contracts.evaluation_contracts import A2AMessage
 
@@ -18,14 +18,14 @@ class MessageQueue:
         self.message_timestamps: Dict[str, datetime] = {}
 
     async def put(self, message: A2AMessage):
-        """Put message in queue"""
+        """Put the message in a queue"""
         if message.message_id not in self.message_ids:
             await self.queue.put(message)
             self.message_ids.add(message.message_id)
-            self.message_timestamps[message.message_id] = datetime.utcnow()
+            self.message_timestamps[message.message_id] = datetime.now(UTC)
 
     async def get(self) -> A2AMessage:
-        """Get message from queue"""
+        """Get the message from queue"""
         message = await self.queue.get()
         return message
 
@@ -35,7 +35,7 @@ class MessageQueue:
 
     def cleanup_expired(self):
         """Clean up expired messages"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expired = [
             msg_id for msg_id, timestamp in self.message_timestamps.items()
             if now - timestamp > self.message_ttl
@@ -112,13 +112,13 @@ class MessageBroker:
             return False
 
     async def subscribe_agent(self, agent_id: str, topic: str):
-        """Subscribe agent to topic"""
+        """Subscribe agent to the topic"""
         if agent_id not in self.agent_subscriptions[topic]:
             self.agent_subscriptions[topic].append(agent_id)
             self.logger.info(f"Agent {agent_id} subscribed to {topic}")
 
     async def unsubscribe_agent(self, agent_id: str, topic: str):
-        """Unsubscribe agent from topic"""
+        """Unsubscribe agent from the topic"""
         if topic in self.agent_subscriptions and agent_id in self.agent_subscriptions[topic]:
             self.agent_subscriptions[topic].remove(agent_id)
             self.logger.info(f"Agent {agent_id} unsubscribed from {topic}")
@@ -149,13 +149,13 @@ class MessageBroker:
                 await connection.send_text(json.dumps({
                     "type": "notification",
                     "message": "new_messages_available",
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(UTC).isoformat()
                 }))
             except Exception as e:
                 self.logger.warning(f"Failed to notify agent {agent_id}: {e}")
 
     async def _broadcast_message(self, message: A2AMessage):
-        """Broadcast message to all agents"""
+        """Broadcast the message to all agents"""
         for agent_id in list(self.agent_queues.keys()):
             if agent_id != message.sender_id:
                 broadcast_msg = A2AMessage(
@@ -169,14 +169,14 @@ class MessageBroker:
                 await self.agent_queues[agent_id].put(broadcast_msg)
 
     def _log_message(self, message: A2AMessage):
-        """Log message for auditing"""
+        """Log the message for auditing"""
         log_entry = {
             "message_id": message.message_id,
             "sender": message.sender_id,
             "receiver": message.receiver_id,
             "type": message.message_type,
             "timestamp": message.timestamp.isoformat(),
-            "size": len(json.dumps(message.dict()))
+            "size": len(json.dumps(message.model_dump()))
         }
 
         self.message_log.append(log_entry)
@@ -194,7 +194,7 @@ class MessageBroker:
                 queue.cleanup_expired()
 
             # Clean old log entries
-            cutoff = datetime.utcnow() - timedelta(days=7)
+            cutoff = datetime.now(UTC) - timedelta(days=7)
             self.message_log = [
                 entry for entry in self.message_log
                 if datetime.fromisoformat(entry["timestamp"]) > cutoff
@@ -222,7 +222,7 @@ class MessageBroker:
         if self.message_log:
             recent_messages = [
                 msg for msg in self.message_log[-100:]
-                if datetime.fromisoformat(msg["timestamp"]) > datetime.utcnow() - timedelta(minutes=5)
+                if datetime.fromisoformat(msg["timestamp"]) > datetime.now(UTC) - timedelta(minutes=5)
             ]
             stats["message_rate_5min"] = len(recent_messages) / 5  # messages per minute
 

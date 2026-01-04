@@ -5,7 +5,7 @@ import json
 import asyncio
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from contracts.evaluation_contracts import A2AMessage
 
 
@@ -52,7 +52,7 @@ class A2AClient:
         message_id = str(uuid.uuid4())
         correlation_id = correlation_id or message_id
 
-        # Create message
+        # Create the message
         message = A2AMessage(
             message_id=message_id,
             sender_id=self.agent_id,
@@ -62,13 +62,13 @@ class A2AClient:
             correlation_id=correlation_id
         )
 
-        # Create future for response
+        # Create the future for response
         response_future = asyncio.Future()
         self.pending_responses[correlation_id] = response_future
 
         try:
-            # Send message
-            await self.websocket.send(message.json())
+            # Send the message
+            await self.websocket.send(message.dump_json())
             self.logger.debug(f"Sent message {message_id} to {receiver_id}")
 
             # Wait for response with timeout
@@ -81,7 +81,7 @@ class A2AClient:
 
         finally:
             # Clean up
-            self.pending_responses.pop(correlation_id, None)
+            await self.pending_responses.pop(correlation_id, None)
 
     async def broadcast_message(
             self,
@@ -89,9 +89,9 @@ class A2AClient:
             content: Dict[str, Any],
             agent_types: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
-        """Broadcast message to multiple agents"""
+        """Broadcast the message to multiple agents"""
         # This would implement broadcasting logic
-        # For simplicity, we'll just send to judge agent
+        # For simplicity, we'll just send it to judge agent
         return [await self.send_message("judge_agent", message_type, content)]
 
     def register_callback(self, message_type: str, callback: callable):
@@ -150,7 +150,7 @@ class A2AInterface:
             content={
                 "analysis_content": analysis_content,
                 "source_documents": source_documents,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
         )
 

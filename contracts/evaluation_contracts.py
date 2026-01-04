@@ -67,7 +67,7 @@ class EvaluationResult(BaseModel):
     evaluation_id: str = Field(...)
     request_id: str = Field(...)
     agent_id: str = Field(...)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=datetime.now)
     overall_score: float = Field(..., ge=0, le=2)
     passed: bool = Field(...)
     rubric_scores: Dict[RubricCategory, RubricScore] = Field(...)
@@ -86,6 +86,6 @@ class A2AMessage(BaseModel):
     receiver_id: str = Field(...)
     message_type: Literal["evaluation_request", "evaluation_response", "agent_query"]
     content: Dict[str, Any] = Field(...)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=datetime.now)
     correlation_id: Optional[str] = None
     priority: int = Field(default=1, ge=1, le=10)

@@ -1,8 +1,7 @@
 # infrastructure/a2a/a2a_server.py
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import json
-import asyncio
-from typing import Dict, Any, List
+from typing import Dict, Any
 import logging
 from contracts.evaluation_contracts import A2AMessage
 from infrastructure.a2a.message_broker import MessageBroker
@@ -33,7 +32,7 @@ class A2AServer:
                     data = await websocket.receive_text()
                     message = json.loads(data)
 
-                    # Process incoming message
+                    # Process the incoming message
                     await self._process_message(agent_id, message)
 
             except WebSocketDisconnect:
@@ -56,7 +55,7 @@ class A2AServer:
             }
 
     async def _process_message(self, sender_id: str, message: Dict[str, Any]):
-        """Process incoming A2A message"""
+        """Process the incoming A2A message"""
 
         # Validate message structure
         if "message_type" not in message or "receiver_id" not in message:
@@ -77,7 +76,7 @@ class A2AServer:
         await self.message_broker.route_message(a2a_message)
 
     async def send_to_agent(self, agent_id: str, message: Dict[str, Any]):
-        """Send message to specific agent"""
+        """Send the message to specific agent"""
         if agent_id in self.active_connections:
             websocket = self.active_connections[agent_id]
             await websocket.send_text(json.dumps(message))

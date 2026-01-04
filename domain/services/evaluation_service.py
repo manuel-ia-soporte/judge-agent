@@ -1,7 +1,7 @@
 # domain/services/evaluation_service.py
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Tuple
 from dataclasses import dataclass
-from domain.models.evaluation import Evaluation, RubricEvaluation
+from domain.models.evaluation import RubricEvaluation
 from domain.models.finance import FinancialAnalysis
 import statistics
 
@@ -41,7 +41,7 @@ class EvaluationOrchestrator:
             if rubric in rubric_scores and not rubric_scores[rubric].is_passed:
                 failed_rubrics.append(rubric)
 
-        # Check overall score
+        # Check the overall score
         if overall_score < min_required_score:
             failed_rubrics.append("overall_score")
 
@@ -109,7 +109,7 @@ class EvaluationOrchestrator:
             return 0.0
 
         # Use average of rubric confidence scores
-        confidences = [eval.confidence_score for eval in rubric_scores.values()]
+        confidences = [evaluation.confidence_score for evaluation in rubric_scores.values()]
         return statistics.mean(confidences) if confidences else 0.0
 
     @staticmethod
@@ -129,7 +129,7 @@ class EvaluationOrchestrator:
                 "High factual accuracy with low source fidelity - verify citations"
             )
 
-        # Check for completeness vs materiality alignment
+        # Check for completeness vs. materiality alignment
         completeness = rubric_scores.get("completeness", None)
         materiality = rubric_scores.get("materiality_relevance", None)
 

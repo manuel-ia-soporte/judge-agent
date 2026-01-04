@@ -1,7 +1,6 @@
 # contracts/judge_contracts.py
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+from typing import List, Dict
 
 
 class JudgeCapabilities(BaseModel):

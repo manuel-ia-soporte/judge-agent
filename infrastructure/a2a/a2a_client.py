@@ -5,7 +5,7 @@ import json
 import asyncio
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from contracts.evaluation_contracts import A2AMessage
 
 
@@ -61,7 +61,7 @@ class A2AClient:
             expect_response: bool = True,
             timeout: int = 30
     ) -> Optional[Dict[str, Any]]:
-        """Send message to another agent"""
+        """Send the message to another agent"""
         if not self.connected or not self.websocket:
             raise ConnectionError("Not connected to A2A server")
 
@@ -75,7 +75,7 @@ class A2AClient:
             message_type=message_type,
             content=content,
             correlation_id=correlation_id,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         )
 
         try:
@@ -84,11 +84,11 @@ class A2AClient:
                 response_future = asyncio.Future()
                 self.pending_responses[correlation_id] = response_future
 
-            # Send message
-            await self.websocket.send(message.json())
+            # Send the message
+            await self.websocket.send(message.model_dump_json())
             self.logger.debug(f"Sent message {message_id} to {receiver_id}")
 
-            # Wait for response if expected
+            # Wait for a response if expected
             if expect_response and correlation_id:
                 response = await asyncio.wait_for(response_future, timeout=timeout)
                 return response
@@ -113,17 +113,17 @@ class A2AClient:
             content: Dict[str, Any],
             agent_filter: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
-        """Broadcast message to multiple agents"""
-        # First get list of agents
+        """Broadcast a message to multiple agents"""
+        # First get the list of agents
         agents = await self._get_available_agents()
 
         if agent_filter:
             agents = [agent for agent in agents if agent in agent_filter]
 
-        # Send to all agents
+        # Send it to all agents
         responses = []
         for agent_id in agents:
-            if agent_id != self.agent_id:  # Don't send to self
+            if agent_id != self.agent_id:  # Don't send it to self
                 try:
                     response = await self.send_message(
                         agent_id, message_type, content, expect_response=False
@@ -136,7 +136,7 @@ class A2AClient:
         return responses
 
     def register_handler(self, message_type: str, handler: callable):
-        """Register handler for specific message type"""
+        """Register handler for the specific message type"""
         self.message_handlers[message_type] = handler
 
     async def _handle_messages(self):
@@ -183,13 +183,15 @@ class A2AClient:
         except Exception as e:
             self.logger.error(f"Reconnection failed: {e}")
 
-    async def _get_available_agents(self) -> List[str]:
-        """Get list of available agents"""
+    @staticmethod
+    async def _get_available_agents() -> List[str]:
+        """Get the list of available agents"""
         try:
             # This would query the A2A server for registered agents
-            # For now, return empty list
+            # For now, return the empty list
             return []
-        except:
+        except Exception as e:
+            print(f"Failed to get available agents: {e}")
             return []
 
     async def close(self):

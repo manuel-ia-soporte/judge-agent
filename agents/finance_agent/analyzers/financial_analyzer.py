@@ -1,10 +1,10 @@
 # agents/finance_agent/analyzers/financial_analyzer.py
 from typing import Dict, Any
 from dataclasses import dataclass
-from application.commands import AnalyzeCompanyCommand
+from ....application.commands.analyze_company_command import AnalyzeCompanyCommand
 from .analyzer_interface import Analyzer
-from domain.services.financial_analysis_service import FinancialAnalysisService
-from domain.repositories.sec_document_repository import SECDocumentRepository
+from ....domain.services.financial_analysis_service import FinancialAnalysisService
+from ....domain.repositories.sec_document_repository import SECDocumentRepository
 
 
 @dataclass

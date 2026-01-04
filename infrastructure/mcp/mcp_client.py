@@ -2,9 +2,8 @@
 from typing import Dict, Any, List, Optional
 import httpx
 import asyncio
-import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from urllib.parse import urljoin
 
 
@@ -116,13 +115,13 @@ class MCPClient:
             return {
                 "healthy": response.status_code == 200,
                 "status_code": response.status_code,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
         except Exception as e:
             return {
                 "healthy": False,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
 
     async def get_schema(self) -> Dict[str, Any]:
@@ -133,7 +132,8 @@ class MCPClient:
                 timeout=10.0
             )
             return response.json() if response.status_code == 200 else {}
-        except:
+        except Exception as e:
+            print(f"Failed to get schema: {e}")
             return {}
 
     async def batch_call(

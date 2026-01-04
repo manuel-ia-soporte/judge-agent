@@ -1,8 +1,8 @@
 # domain/services/rubrics_service.py
 """Rubrics domain service."""
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 from dataclasses import dataclass
-from domain.models.evaluation import RubricEvaluation, Evaluation
+from domain.models.evaluation import RubricEvaluation
 from domain.models.finance import FinancialAnalysis, SECDocument
 import re
 

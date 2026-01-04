@@ -1,10 +1,8 @@
 # infrastructure/sec_edgar/edgar_parser.py
 import re
-import json
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 import logging
-import pandas as pd
 
 
 class EdgarParser:
@@ -85,14 +83,15 @@ class EdgarParser:
 
         return statement_data
 
-    def _get_latest_period(self, item_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    @staticmethod
+    def _get_latest_period(item_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Get latest period from item data"""
         if "units" not in item_data:
             return None
 
         for unit_type, periods in item_data["units"].items():
             if periods:
-                # Get most recent period
+                # Get the most recent period
                 latest = sorted(periods, key=lambda x: x.get("end", ""), reverse=True)[0]
                 return {
                     "value": float(latest.get("val", 0)),
@@ -104,7 +103,7 @@ class EdgarParser:
         return None
 
     def _parse_from_text(self, filing_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Parse from unstructured text"""
+        """Parse from the unstructured text"""
         statements = {}
         text = filing_data.get("text", "")
 
@@ -146,7 +145,8 @@ class EdgarParser:
         # Deduplicate and return
         return list(set(risk_factors))[:50]  # Limit to 50
 
-    def _extract_structured_risks(self, facts: Dict[str, Any]) -> List[str]:
+    @staticmethod
+    def _extract_structured_risks(facts: Dict[str, Any]) -> List[str]:
         """Extract risks from structured data"""
         risks = []
 
@@ -166,7 +166,7 @@ class EdgarParser:
         return risks
 
     def _extract_section(self, text: str, section_name: str) -> Optional[str]:
-        """Extract specific section from text"""
+        """Extract the specific section from text"""
         if section_name not in self.section_patterns:
             return None
 
@@ -179,7 +179,7 @@ class EdgarParser:
         return None
 
     def _parse_risk_items(self, risk_section: str) -> List[str]:
-        """Parse individual risk items from risk section"""
+        """Parse individual risk items from the risk section"""
         # Split by common risk item patterns
         risk_items = []
 
@@ -225,7 +225,8 @@ class EdgarParser:
             "word_count": len(md_section.split())
         }
 
-    def _parse_mda_sections(self, md_text: str) -> List[Dict[str, str]]:
+    @staticmethod
+    def _parse_mda_sections(md_text: str) -> List[Dict[str, str]]:
         """Parse MD&A into sections"""
         sections = []
 
@@ -249,7 +250,8 @@ class EdgarParser:
 
         return sections
 
-    def _extract_mda_topics(self, md_text: str) -> List[str]:
+    @staticmethod
+    def _extract_mda_topics(md_text: str) -> List[str]:
         """Extract key topics from MD&A"""
         topics = []
 

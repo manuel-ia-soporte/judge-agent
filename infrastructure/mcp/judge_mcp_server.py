@@ -44,7 +44,7 @@ class JudgeMCPAdapter:
                 )
 
                 result = await self.use_case.execute(request)
-                return result.dict()
+                return result.model_dump()
 
             except Exception as e:
                 logging.error(f"Evaluation failed: {e}")

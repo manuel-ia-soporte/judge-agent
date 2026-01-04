@@ -1,7 +1,7 @@
 # domain/repositories/agent_repository.py
-from typing import List, Optional, Dict, Any, Set
+from typing import List, Optional, Dict, Set
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from domain.models.agent import Agent, AgentStatus, AgentCapability
 import asyncio
 import logging
@@ -37,7 +37,7 @@ class AgentRepository(ABC):
 
     @abstractmethod
     async def delete(self, agent_id: str) -> bool:
-        """Delete agent from repository"""
+        """Delete the agent from repository"""
         pass
 
     @abstractmethod
@@ -118,13 +118,13 @@ class InMemoryAgentRepository(AgentRepository):
             self.status_index[status].add(agent_id)
 
             # Update last heartbeat
-            agent.last_heartbeat = datetime.utcnow()
+            agent.last_heartbeat = datetime.now(UTC)
 
             self.logger.debug(f"Agent status updated: {agent_id} -> {status}")
             return True
 
     async def delete(self, agent_id: str) -> bool:
-        """Delete agent from repository"""
+        """Delete the agent from repository"""
         async with self.lock:
             if agent_id not in self.agents:
                 return False
@@ -144,9 +144,9 @@ class InMemoryAgentRepository(AgentRepository):
             return len(self.agents)
 
     async def find_inactive_agents(self, timeout_minutes: int = 5) -> List[Agent]:
-        """Find agents that haven't sent heartbeat in timeout period"""
+        """Find agents that haven't sent heartbeat in a timeout period"""
         async with self.lock:
-            cutoff = datetime.utcnow() - timedelta(minutes=timeout_minutes)
+            cutoff = datetime.now(UTC) - timedelta(minutes=timeout_minutes)
             inactive_agents = []
 
             for agent in self.agents.values():
@@ -217,7 +217,7 @@ class CachedAgentRepository(AgentRepository):
 
             if success:
                 # Update cache
-                self.cache[agent.agent_id] = (agent, datetime.utcnow())
+                self.cache[agent.agent_id] = (agent, datetime.now(UTC))
 
             return success
 
@@ -228,7 +228,7 @@ class CachedAgentRepository(AgentRepository):
             cached = self.cache.get(agent_id)
             if cached:
                 agent, timestamp = cached
-                if datetime.utcnow() - timestamp < timedelta(seconds=self.cache_ttl):
+                if datetime.now(UTC) - timestamp < timedelta(seconds=self.cache_ttl):
                     return agent
 
             # Not in cache or expired, query primary
@@ -236,7 +236,7 @@ class CachedAgentRepository(AgentRepository):
 
             if agent:
                 # Update cache
-                self.cache[agent_id] = (agent, datetime.utcnow())
+                self.cache[agent_id] = (agent, datetime.now(UTC))
 
             return agent
 
@@ -290,7 +290,7 @@ class CachedAgentRepository(AgentRepository):
     async def cleanup_expired_cache(self):
         """Clean up expired cache entries"""
         async with self.lock:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             expired = [
                 agent_id for agent_id, (_, timestamp) in self.cache.items()
                 if now - timestamp > timedelta(seconds=self.cache_ttl)
@@ -320,7 +320,7 @@ class AgentRepositoryFactory:
 
     @staticmethod
     async def create_repo_with_cleanup(repo_type: str = "cached") -> AgentRepository:
-        """Create repository with background cleanup task"""
+        """Create repository with the background cleanup task"""
         if repo_type == "cached":
             repo = AgentRepositoryFactory.create_cached_repo()
 

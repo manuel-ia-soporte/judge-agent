@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from ..models.entities import SECDocument
 from ..models.value_objects import FinancialMetric, RiskFactor
+import re
 
 
 @dataclass

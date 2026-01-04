@@ -2,7 +2,6 @@
 from typing import Dict, Any, List, Optional
 import httpx
 import asyncio
-import json
 import logging
 from pydantic import BaseModel
 
@@ -100,7 +99,8 @@ class MCPClient:
         try:
             response = await self.session.get(url, timeout=5.0)
             return response.status_code == 200
-        except:
+        except Exception as e:
+            print(f"Failed error {e}")
             return False
 
     async def close(self):

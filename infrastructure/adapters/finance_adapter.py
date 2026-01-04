@@ -1,6 +1,6 @@
 # infrastructure/adapters/finance_adapter.py
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from domain.models.finance import SECDocument, FinancialAnalysis, FinancialMetric
 from contracts.finance_contracts import CompanyFinancials, FinancialMetricData, SECFilingRequest
 from infrastructure.sec_edgar.edgar_parser import EdgarParser
@@ -15,13 +15,13 @@ class FinanceAdapter:
     def sec_response_to_document(self, sec_data: Dict[str, Any]) -> SECDocument:
         """Convert SEC API response to domain document"""
         filing_date = datetime.fromisoformat(
-            sec_data.get("filingDate", datetime.utcnow().isoformat()).replace("Z", "")
+            sec_data.get("filingDate", datetime.now(UTC).isoformat()).replace("Z", "")
         )
 
         period_end_str = sec_data.get("period", {}).get("end", filing_date.isoformat())
         period_end = datetime.fromisoformat(period_end_str.replace("Z", ""))
 
-        # Parse items from text
+        # Parse items from the text
         items = {}
         text = sec_data.get("text", "")
 
@@ -52,7 +52,7 @@ class FinanceAdapter:
         if not documents:
             raise ValueError("No documents provided")
 
-        # Use first document for company info
+        # Use the first document for company info
         primary_doc = documents[0]
 
         # Extract metrics from all documents
@@ -72,7 +72,7 @@ class FinanceAdapter:
                 management_discussion = doc.items["Item 7"][:5000]  # Limit size
                 break
 
-        # Prepare filings list
+        # Prepare a filing list
         filings = []
         for doc in documents:
             filings.append({
@@ -131,7 +131,8 @@ class FinanceAdapter:
 
         return metrics
 
-    def _extract_recent_events(self, documents: List[SECDocument]) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _extract_recent_events(documents: List[SECDocument]) -> List[Dict[str, Any]]:
         """Extract recent events from documents"""
         events = []
 
@@ -200,18 +201,18 @@ class FinanceAdapter:
             "metrics": metrics,
             "matrix": matrix,
             "relative_performance": relative_performance,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(UTC).isoformat()
         }
 
+    @staticmethod
     def _calculate_relative_performance(
-            self,
             matrix: Dict[str, Dict[str, Any]]
     ) -> Dict[str, Any]:
         """Calculate relative performance between companies"""
         if not matrix:
             return {}
 
-        # For each metric, rank companies
+        # For an each metric, rank the companies
         rankings = {}
 
         for metric in list(next(iter(matrix.values())).keys()):

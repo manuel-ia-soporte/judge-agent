@@ -1,7 +1,7 @@
 # domain/models/agent.py
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 
@@ -49,7 +49,7 @@ class AgentMetrics:
     error_count: int = 0
 
     def update_success(self, processing_time: float):
-        """Update metrics for successful task"""
+        """Update metrics for the successful task"""
         self.tasks_completed += 1
         self.average_processing_time = (
                 (self.average_processing_time * (self.tasks_completed - 1) + processing_time)
@@ -57,7 +57,7 @@ class AgentMetrics:
         )
         self.success_rate = (self.tasks_completed /
                              (self.tasks_completed + self.tasks_failed)) * 100
-        self.last_active = datetime.utcnow()
+        self.last_active = datetime.now(UTC)
 
     def update_failure(self):
         """Update metrics for failed task"""
@@ -77,7 +77,7 @@ class Agent:
     status: AgentStatus = AgentStatus.REGISTERED
     metrics: AgentMetrics = field(default_factory=AgentMetrics)
     configuration: Dict[str, Any] = field(default_factory=dict)
-    registered_at: datetime = field(default_factory=datetime.utcnow)
+    registered_at: datetime = field(default_factory=datetime.now)
     last_heartbeat: Optional[datetime] = None
 
     def activate(self):
@@ -85,7 +85,7 @@ class Agent:
         if self.status == AgentStatus.ERROR:
             raise ValueError("Cannot activate agent in error state")
         self.status = AgentStatus.ACTIVE
-        self.last_heartbeat = datetime.utcnow()
+        self.last_heartbeat = datetime.now(UTC)
 
     def deactivate(self):
         """Deactivate the agent"""
@@ -103,7 +103,7 @@ class Agent:
 
     def update_heartbeat(self):
         """Update agent heartbeat"""
-        self.last_heartbeat = datetime.utcnow()
+        self.last_heartbeat = datetime.now(UTC)
         if self.status == AgentStatus.IDLE:
             self.status = AgentStatus.ACTIVE
 

@@ -1,14 +1,15 @@
 # application/use_cases/evaluate_analysis.py
+from datetime import datetime, UTC
 from typing import List, Dict, Any
-from application.interfaces.mcp_interface import MCPClient
-from application.interfaces.a2a_interface import A2AClient
-from domain.models.evaluation import Evaluation, EvaluationStatus
-from domain.services.rubrics_service import RubricEvaluator
-from contracts.evaluation_contracts import EvaluationRequest, EvaluationResult
+from ...application.interfaces.mcp_interface import MCPClient
+from ...application.interfaces.a2a_interface import A2AClient
+from ...domain.models.evaluation import Evaluation
+from ...domain.services.rubrics_service import RubricEvaluator
+from ...contracts.evaluation_contracts import EvaluationRequest, EvaluationResult
 
 
 class EvaluateAnalysisUseCase:
-    """Use case for evaluating financial analysis"""
+    """Use the case for evaluating financial analysis"""
 
     def __init__(
             self,
@@ -79,7 +80,7 @@ class EvaluateAnalysisUseCase:
         """Fetch SEC documents"""
         documents = []
         for ref in source_refs:
-            # This would use SEC client to fetch actual documents
+            # This would use the SEC client to fetch actual documents
             doc = await self.sec_data_provider.fetch_document(
                 ref.get("cik"),
                 ref.get("filing_type"),
@@ -89,7 +90,8 @@ class EvaluateAnalysisUseCase:
                 documents.append(doc)
         return documents
 
-    def _parse_analysis_content(self, content: str, source_docs: List[Any]) -> Any:
+    @staticmethod
+    def _parse_analysis_content(content: str, source_docs: List[Any]) -> Any:
         """Parse analysis content into domain model"""
         # Simplified parsing - would be more complex in production
         from domain.models.finance import FinancialAnalysis
@@ -97,7 +99,7 @@ class EvaluateAnalysisUseCase:
             analysis_id="temp",
             agent_id="unknown",
             company_ticker="",
-            analysis_date=datetime.utcnow(),
+            analysis_date=datetime.now(UTC),
             content=content,
             metrics_used=[],
             source_documents=source_docs,
@@ -105,7 +107,8 @@ class EvaluateAnalysisUseCase:
             risks_identified=[]
         )
 
-    def _extract_expected_values(self, sec_docs: List[Any]) -> Dict[str, float]:
+    @staticmethod
+    def _extract_expected_values(sec_docs: List[Any]) -> Dict[str, float]:
         """Extract expected values from SEC documents"""
         # This would parse actual values from SEC filings
         return {}
@@ -125,7 +128,8 @@ class EvaluateAnalysisUseCase:
             metadata=evaluation.metadata
         )
 
-    def _rubric_to_contract(self, rubric_eval: Any) -> Dict:
+    @staticmethod
+    def _rubric_to_contract(rubric_eval: Any) -> Dict:
         """Convert rubric evaluation to contract"""
         from contracts.evaluation_contracts import RubricScore
         return RubricScore(

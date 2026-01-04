@@ -58,7 +58,7 @@ class CompanyFinancials(BaseModel):
     recent_events: List[Dict[str, Any]] = Field(default_factory=list)
 
     def get_latest_metric(self, metric_name: str) -> Optional[FinancialMetricData]:
-        """Get latest value for a metric"""
+        """Get the latest value for a metric"""
         if metric_name in self.metrics and self.metrics[metric_name]:
             return sorted(self.metrics[metric_name],
                           key=lambda x: x.period,
@@ -85,7 +85,7 @@ class RiskAssessment(BaseModel):
     """Risk assessment contract"""
     assessment_id: str = Field(...)
     company_cik: str = Field(...)
-    assessment_date: datetime = Field(default_factory=datetime.utcnow)
+    assessment_date: datetime = Field(default_factory=datetime.now)
     risk_categories: Dict[str, float] = Field(...)  # category -> score
     overall_risk_score: float = Field(..., ge=0, le=1)
     mitigations: List[str] = Field(default_factory=list)

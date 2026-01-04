@@ -1,8 +1,6 @@
 # agents/judge_agent/rubrics_evaluator.py
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Optional
 import re
-import statistics
-from datetime import datetime
 from dataclasses import dataclass
 from domain.models.finance import FinancialAnalysis, SECDocument
 from domain.models.evaluation import RubricEvaluation
@@ -159,7 +157,7 @@ class RubricEvaluator:
                 evidence=[]
             )
 
-        # Get latest document date
+        # Get the latest document date
         latest_doc = max(sec_documents, key=lambda d: d.filing_date)
         latest_date = latest_doc.filing_date
 

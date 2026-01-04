@@ -1,7 +1,7 @@
 # domain/models/evaluation.py
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 
@@ -32,10 +32,10 @@ class RubricEvaluation:
     feedback: str
     evidence: List[str]
     confidence_score: float = 1.0
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def adjust_score(self, adjustment: float) -> None:
-        """Adjust score with bounds checking"""
+        """Adjust score with bound checking"""
         new_score = self.score + adjustment
         self.score = max(0, min(2, new_score))
         self._update_pass_status()
@@ -58,7 +58,7 @@ class Evaluation:
     recommendations: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
 
     def add_rubric_evaluation(self, rubric_eval: RubricEvaluation) -> None:
@@ -73,16 +73,16 @@ class Evaluation:
             return
 
         # Default equal weighting if not specified
-        total_score = sum(eval.score for eval in self.rubric_evaluations.values())
+        total_score = sum(evaluation.score for evaluation in self.rubric_evaluations.values())
         self.overall_score = total_score / len(self.rubric_evaluations)
         self.is_passed = self.overall_score >= 1.5  # Configurable threshold
 
     def complete_evaluation(self) -> None:
         """Mark evaluation as completed"""
         self.status = EvaluationStatus.COMPLETED
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(UTC)
 
     def get_failed_rubrics(self) -> List[str]:
-        """Get list of failed rubrics"""
-        return [name for name, eval in self.rubric_evaluations.items()
-                if not eval.is_passed]
+        """Get the list of failed rubrics"""
+        return [name for name, evaluation in self.rubric_evaluations.items()
+                if not evaluation.is_passed]

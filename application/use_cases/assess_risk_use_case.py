@@ -3,7 +3,7 @@
 
 from typing import List, Dict, Any
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 
 from ..commands import AssessRiskCommand
 from ..dtos.risk_dtos import RiskAssessmentDTO
@@ -73,7 +73,7 @@ class AssessRiskUseCase:
 
         return RiskAssessmentDTO(
             company_cik=command.company_cik,
-            assessment_date=datetime.now,
+            assessment_date=datetime.now(UTC),
             risk_factors=[self._risk_factor_to_dict(rf) for rf in risk_factors],
             risk_categories=risk_categories,
             risk_level=risk_level,

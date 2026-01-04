@@ -1,7 +1,8 @@
 # agents/judge_agent/judge_agent.py
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import asyncio
 import logging
+from datetime import datetime
 from dataclasses import dataclass
 from domain.models.evaluation import Evaluation
 from contracts.evaluation_contracts import EvaluationRequest, EvaluationResult
@@ -97,7 +98,7 @@ class JudgeAgent:
                 warnings=evaluation.warnings,
                 metadata={
                     "judge_id": self.agent_id,
-                    "configuration": self.configuration.dict()
+                    "configuration": self.configuration.model_dump()
                 }
             )
 
@@ -108,7 +109,8 @@ class JudgeAgent:
             logging.error(f"Evaluation failed: {e}")
             raise
 
-    async def _process_rubrics(self, request: EvaluationRequest) -> Dict[str, Any]:
+    @staticmethod
+    async def _process_rubrics(request: EvaluationRequest) -> Dict[str, Any]:
         """Process each rubric"""
         from domain.services.rubrics_service import RubricEvaluator
 
@@ -120,7 +122,7 @@ class JudgeAgent:
             analysis_id=request.analysis_id,
             agent_id=request.agent_id,
             company_ticker="",
-            analysis_date=datetime.utcnow(),
+            analysis_date=datetime.now(),
             content=request.analysis_content,
             metrics_used=[],
             source_documents=[],
@@ -183,7 +185,7 @@ class JudgeAgent:
         return {
             "agent_id": self.agent_id,
             "status": "active" if self.is_active else "inactive",
-            "metrics": self.metrics.dict(),
+            "metrics": self.metrics.model_dump(),
             "queue_size": self.evaluations_queue.qsize(),
-            "capabilities": self.capabilities.dict()
+            "capabilities": self.capabilities.model_dump()
         }

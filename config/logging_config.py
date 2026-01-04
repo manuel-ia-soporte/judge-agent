@@ -1,9 +1,8 @@
 # config/logging_config.py
 import logging
 import sys
-import json
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 import structlog
 from pythonjsonlogger import jsonlogger
 
@@ -82,11 +81,11 @@ class FinanceLogger:
         self.context.clear()
 
     def info(self, message: str, **kwargs):
-        """Log info message with context"""
+        """Log the info message with context"""
         self.logger.info(message, **{**self.context, **kwargs})
 
     def warning(self, message: str, **kwargs):
-        """Log warning message with context"""
+        """Log the warning message with context"""
         self.logger.warning(message, **{**self.context, **kwargs})
 
     def error(self, message: str, **kwargs):
@@ -94,11 +93,11 @@ class FinanceLogger:
         self.logger.error(message, **{**self.context, **kwargs})
 
     def critical(self, message: str, **kwargs):
-        """Log critical message with context"""
+        """Log the critical message with context"""
         self.logger.critical(message, **{**self.context, **kwargs})
 
     def debug(self, message: str, **kwargs):
-        """Log debug message with context"""
+        """Log the debug message with context"""
         self.logger.debug(message, **{**self.context, **kwargs})
 
     def audit(self, event: str, user: str = None, **kwargs):
@@ -106,7 +105,7 @@ class FinanceLogger:
         audit_data = {
             "event": event,
             "user": user or "system",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **kwargs
         }
         self.logger.info("audit_event", **audit_data)
@@ -116,7 +115,7 @@ class FinanceLogger:
         perf_data = {
             "operation": operation,
             "duration_ms": duration_ms,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **kwargs
         }
         self.logger.info("performance_metric", **perf_data)
@@ -126,7 +125,7 @@ class FinanceLogger:
         self.logger.info("evaluation_completed",
                          evaluation_id=evaluation_id,
                          result=result,
-                         timestamp=datetime.utcnow().isoformat())
+                         timestamp=datetime.now(UTC).isoformat())
 
 
 class LoggingMiddleware:
@@ -144,13 +143,13 @@ class LoggingMiddleware:
 
     async def log_http_request(self, scope, receive, send):
         """Log HTTP request/response"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC   )
 
         # Create logging wrapper
         async def send_wrapper(message):
             if message['type'] == 'http.response.start':
                 # Log response
-                end_time = datetime.utcnow()
+                end_time = datetime.now(UTC)
                 duration = (end_time - start_time).total_seconds() * 1000
 
                 self.logger.performance(

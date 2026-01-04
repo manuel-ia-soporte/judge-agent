@@ -1,15 +1,13 @@
 # application/use_cases/score_rubrics.py
 from typing import Dict, List, Any, Optional
-from application.interfaces.mcp_interface import MCPClient
-from application.interfaces.a2a_interface import A2AClient
+from datetime import datetime, UTC
 from domain.models.evaluation import RubricEvaluation
 from domain.services.rubrics_service import RubricEvaluator
-from domain.services.evaluation_service import EvaluationOrchestrator
-from contracts.evaluation_contracts import EvaluationRequest, RubricScore
+from contracts.evaluation_contracts import RubricScore
 
 
 class ScoreRubricsUseCase:
-    """Use case for scoring individual rubrics"""
+    """Use the case for scoring individual rubrics"""
 
     def __init__(self, sec_data_provider: Any):
         self.sec_data_provider = sec_data_provider
@@ -36,7 +34,7 @@ class ScoreRubricsUseCase:
             analysis_id="scoring_analysis",
             agent_id="scoring_agent",
             company_ticker="",
-            analysis_date=datetime.utcnow(),
+            analysis_date=datetime.now(UTC),
             content=analysis_content,
             metrics_used=[],
             source_documents=[],
@@ -61,8 +59,8 @@ class ScoreRubricsUseCase:
 
         return rubric_scores
 
+    @staticmethod
     async def _score_rubric(
-            self,
             rubric: str,
             analysis: FinancialAnalysis,
             sec_docs: List[Any],
@@ -103,7 +101,8 @@ class ScoreRubricsUseCase:
             confidence=eval_result.confidence_score
         )
 
-    async def _fetch_documents(self, source_refs: List[Dict]) -> List[Any]:
+    @staticmethod
+    async def _fetch_documents(source_refs: List[Dict]) -> List[Any]:
         """Fetch source documents"""
         documents = []
         for ref in source_refs:

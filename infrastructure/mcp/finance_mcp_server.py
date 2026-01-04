@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastmcp import FastMCP
 import uvicorn
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 from infrastructure.sec_edgar.sec_client import SECClient
 from infrastructure.sec_edgar.edgar_parser import EdgarParser
@@ -53,7 +53,7 @@ class FinanceMCPAdapter:
                     "financial_statements": parsed_data,
                     "metadata": {
                         "source": "SEC EDGAR",
-                        "retrieved_at": datetime.utcnow().isoformat()
+                        "retrieved_at": datetime.now(UTC).isoformat()
                     }
                 }
 
@@ -87,18 +87,18 @@ class FinanceMCPAdapter:
                         ratio_results[ratio] = {
                             "value": value,
                             "unit": "ratio",
-                            "calculation_date": datetime.utcnow().isoformat()
+                            "calculation_date": datetime.now(UTC).isoformat()
                         }
                     except Exception as e:
                         ratio_results[ratio] = {
                             "error": str(e),
-                            "calculation_date": datetime.utcnow().isoformat()
+                            "calculation_date": datetime.now(UTC).isoformat()
                         }
 
                 return {
                     "company_cik": company_cik,
                     "ratios": ratio_results,
-                    "as_of_date": datetime.utcnow().isoformat()
+                    "as_of_date": datetime.now(UTC).isoformat()
                 }
 
             except Exception as e:
@@ -130,7 +130,7 @@ class FinanceMCPAdapter:
                     "filing_type": filing_type,
                     "risk_factors": risk_factors,
                     "count": len(risk_factors),
-                    "extracted_at": datetime.utcnow().isoformat()
+                    "extracted_at": datetime.now(UTC).isoformat()
                 }
 
             except Exception as e:
@@ -159,20 +159,21 @@ class FinanceMCPAdapter:
 
                     comparison_data[cik] = {
                         "metrics": metrics_values,
-                        "as_of_date": datetime.utcnow().isoformat()
+                        "as_of_date": datetime.now(UTC).isoformat()
                     }
 
                 return {
                     "comparison": comparison_data,
                     "metrics": metrics,
-                    "comparison_date": datetime.utcnow().isoformat()
+                    "comparison_date": datetime.now(UTC).isoformat()
                 }
 
             except Exception as e:
                 logging.error(f"Failed to compare companies: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
-    def _calculate_ratio(self, ratio: str, filings: List[Dict]) -> float:
+    @staticmethod
+    def _calculate_ratio(ratio: str, filings: List[Dict]) -> float:
         """Calculate specific financial ratio"""
         # Simplified implementation
         if ratio == "current_ratio":
@@ -184,7 +185,8 @@ class FinanceMCPAdapter:
         else:
             raise ValueError(f"Unknown ratio: {ratio}")
 
-    def _extract_metric(self, company_data: Dict[str, Any], metric: str) -> float:
+    @staticmethod
+    def _extract_metric(company_data: Dict[str, Any], metric: str) -> float:
         """Extract specific metric from company data"""
         # Simplified implementation
         return 0.0

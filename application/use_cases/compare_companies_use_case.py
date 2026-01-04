@@ -5,13 +5,13 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime, UTC
 
-from ..commands import CompareCompaniesCommand
+from ...application.commands.compare_companies_command import CompareCompaniesCommand
 from ..dtos.analysis_dtos import ComparisonResultDTO
-from domain.repositories.sec_document_repository import SECDocumentRepository
-from domain.services.financial_analysis_service import FinancialAnalysisService
-from domain.services.risk_assessment_service import RiskAssessmentService
-from domain.services.operational_analysis_service import OperationalAnalysisService
-from domain.services.strategic_analysis_service import StrategicAnalysisService
+from ...domain.repositories.sec_document_repository import SECDocumentRepository
+from ...domain.services.financial_analysis_service import FinancialAnalysisService
+from ...domain.services.risk_assessment_service import RiskAssessmentService
+from ...domain.services.operational_analysis_service import OperationalAnalysisService
+from ...domain.services.strategic_analysis_service import StrategicAnalysisService
 
 
 @dataclass

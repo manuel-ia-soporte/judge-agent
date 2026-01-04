@@ -1,6 +1,6 @@
 # infrastructure/adapters/evaluation_adapter.py
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from typing import Dict, Any
+from datetime import datetime, UTC
 from domain.models.evaluation import Evaluation, RubricEvaluation
 from contracts.evaluation_contracts import EvaluationRequest, EvaluationResult, RubricScore
 from domain.services.evaluation_service import EvaluationOrchestrator
@@ -13,18 +13,18 @@ class EvaluationAdapter:
     def request_to_domain(request: EvaluationRequest) -> Evaluation:
         """Convert evaluation request to domain entity"""
         return Evaluation(
-            evaluation_id=f"eval_{request.analysis_id}_{datetime.utcnow().timestamp()}",
+            evaluation_id=f"eval_{request.analysis_id}_{datetime.now(UTC).timestamp()}",
             analysis_id=request.analysis_id,
             agent_id=request.agent_id,
             metadata={
-                "request": request.dict(exclude={"analysis_content", "source_documents"}),
-                "received_at": datetime.utcnow().isoformat()
+                "request": request.model_dump(exclude={"analysis_content", "source_documents"}),
+                "received_at": datetime.now(UTC).isoformat()
             }
         )
 
     @staticmethod
     def domain_to_result(evaluation: Evaluation) -> EvaluationResult:
-        """Convert domain entity to evaluation result"""
+        """Convert domain entity to the evaluation result"""
 
         # Convert rubric evaluations
         rubric_scores = {}
@@ -45,7 +45,7 @@ class EvaluationAdapter:
                 analysis_id=evaluation.analysis_id,
                 agent_id=evaluation.agent_id,
                 company_ticker="",
-                analysis_date=datetime.utcnow(),
+                analysis_date=datetime.now(UTC),
                 content="",
                 metrics_used=[],
                 source_documents=[],
@@ -158,7 +158,7 @@ class EvaluationAdapter:
             return normalized
 
         # Find current min and max
-        scores = [eval.score for eval in evaluation.rubric_evaluations.values()]
+        scores = [evaluation.score for evaluation in evaluation.rubric_evaluations.values()]
         current_min = min(scores)
         current_max = max(scores)
 
@@ -187,13 +187,13 @@ class EvaluationAdapter:
 
     @staticmethod
     def create_summary_report(evaluation: Evaluation) -> Dict[str, Any]:
-        """Create summary report from evaluation"""
+        """Create the summary report from evaluation"""
         if not evaluation.rubric_evaluations:
             return {"error": "No rubric evaluations"}
 
         # Calculate statistics
-        scores = [eval.score for eval in evaluation.rubric_evaluations.values()]
-        passed_count = sum(1 for eval in evaluation.rubric_evaluations.values() if eval.is_passed)
+        scores = [evaluation.score for evaluation in evaluation.rubric_evaluations.values()]
+        passed_count = sum(1 for evaluation in evaluation.rubric_evaluations.values() if evaluation.is_passed)
 
         # Group by score ranges
         score_ranges = {
@@ -205,12 +205,12 @@ class EvaluationAdapter:
 
         # Identify strengths and weaknesses
         strengths = [
-            rubric for rubric, eval in evaluation.rubric_evaluations.items()
-            if eval.score >= 1.8
+            rubric for rubric, evaluation in evaluation.rubric_evaluations.items()
+            if evaluation.score >= 1.8
         ]
 
         weaknesses = [
-            rubric for rubric, eval in evaluation.rubric_evaluations.items()
+            rubric for rubric, evaluation in evaluation.rubric_evaluations.items()
             if eval.score < 1.0
         ]
 

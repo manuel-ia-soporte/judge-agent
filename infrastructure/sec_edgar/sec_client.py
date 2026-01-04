@@ -1,8 +1,6 @@
 # infrastructure/sec_edgar/sec_client.py
 import httpx
 from typing import Optional, Dict, Any, List
-import asyncio
-from datetime import datetime
 import logging
 from sec_edgar_downloader import Downloader
 import edgartools
