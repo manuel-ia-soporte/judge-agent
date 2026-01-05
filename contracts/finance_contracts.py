@@ -1,5 +1,5 @@
 # contracts/finance_contracts.py
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -26,8 +26,8 @@ class SECFilingRequest(BaseModel):
     accession_number: Optional[str] = Field(None, description="SEC accession number")
     include_attachments: bool = Field(default=False)
 
-    @validator('company_cik')
-    def validate_cik(cls, v):
+    @field_validator('company_cik')
+    def validate_cik(self, v):
         if not v.isdigit() or len(v) > 10:
             raise ValueError("CIK must be numeric and up to 10 digits")
         return v.zfill(10)
@@ -74,8 +74,8 @@ class MarketDataRequest(BaseModel):
     interval: str = Field(default="1d", pattern="^(1d|1wk|1mo)$")
     metrics: List[str] = Field(default_factory=lambda: ["close", "volume"])
 
-    @validator('end_date')
-    def validate_dates(cls, v, values):
+    @field_validator('end_date')
+    def validate_dates(self, v, values):
         if 'start_date' in values and v <= values['start_date']:
             raise ValueError("end_date must be after start_date")
         return v

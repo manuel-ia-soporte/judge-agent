@@ -1,7 +1,7 @@
 # contracts/integration/sec_edgar_contracts.py
 """SEC EDGAR integration contracts"""
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -31,14 +31,14 @@ class SECFilingRequest(BaseModel):
     include_xbrl: bool = Field(True, description="Include XBRL data")
     limit: int = Field(10, ge=1, le=100, description="Maximum number of filings")
 
-    @validator('company_cik')
-    def validate_cik(cls, v):
+    @field_validator('company_cik')
+    def validate_cik(self, v):
         if not v.isdigit() or len(v) > 10:
             raise ValueError("CIK must be numeric and up to 10 digits")
         return v.zfill(10)
 
-    @validator('end_date')
-    def validate_dates(cls, v, values):
+    @field_validator('end_date')
+    def validate_dates(self, v, values):
         if v and 'start_date' in values and values['start_date'] and v < values['start_date']:
             raise ValueError("end_date must be after start_date")
         return v
@@ -104,8 +104,8 @@ class SECCompanyFactsRequest(BaseModel):
     include_all: bool = Field(False, description="Include all concepts")
     taxonomy: str = Field("us-gaap", description="XBRL taxonomy")
 
-    @validator('company_cik')
-    def validate_cik(cls, v):
+    @field_validator('company_cik')
+    def validate_cik(self, v):
         if not v.isdigit() or len(v) > 10:
             raise ValueError("CIK must be numeric and up to 10 digits")
         return v.zfill(10)

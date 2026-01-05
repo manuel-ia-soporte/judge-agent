@@ -76,7 +76,7 @@ class A2AServer:
         await self.message_broker.route_message(a2a_message)
 
     async def send_to_agent(self, agent_id: str, message: Dict[str, Any]):
-        """Send the message to specific agent"""
+        """Send the message to the specific agent"""
         if agent_id in self.active_connections:
             websocket = self.active_connections[agent_id]
             await websocket.send_text(json.dumps(message))

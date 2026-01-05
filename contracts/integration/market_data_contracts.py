@@ -1,7 +1,7 @@
 # contracts/integration/market_data_contracts.py
 """Market data integration contracts"""
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 from enum import Enum
@@ -44,15 +44,15 @@ class MarketDataRequest(BaseModel):
     # Provider-specific parameters
     provider_params: Dict[str, Any] = Field(default_factory=dict, description="Provider-specific parameters")
 
-    @validator('interval')
-    def validate_interval(cls, v):
+    @field_validator('interval')
+    def validate_interval(self, v):
         valid_intervals = ["1d", "1wk", "1mo", "1m", "5m", "15m", "30m", "60m"]
         if v not in valid_intervals:
             raise ValueError(f"Interval must be one of: {', '.join(valid_intervals)}")
         return v
 
-    @validator('period')
-    def validate_period(cls, v):
+    @field_validator('period')
+    def validate_period(self, v):
         if v not in ["annual", "quarterly"]:
             raise ValueError("Period must be 'annual' or 'quarterly'")
         return v
@@ -154,8 +154,8 @@ class MarketDataResponse(BaseModel):
     provider: MarketDataProvider = Field(..., description="Data provider")
     error_message: Optional[str] = Field(None, description="Error message if any")
 
-    @validator('quote', 'history', 'fundamentals')
-    def validate_data_type(cls, v, values):
+    @field_validator('quote', 'history', 'fundamentals')
+    def validate_data_type(self, v, values):
         data_type = values.get('data_type')
 
         if data_type == MarketDataType.QUOTE and not values.get('quote'):

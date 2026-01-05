@@ -1,5 +1,5 @@
 # contracts/evaluation_contracts.py
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum
@@ -44,8 +44,8 @@ class EvaluationRequest(BaseModel):
     minimum_threshold: Optional[float] = Field(default=1.0, ge=0, le=2)
     context: Dict[str, Any] = Field(default_factory=dict)
 
-    @validator('source_documents')
-    def validate_source_documents(cls, v):
+    @field_validator('source_documents')
+    def validate_source_documents(self, v):
         for doc in v:
             if 'document_type' not in doc or 'content' not in doc:
                 raise ValueError("Source documents must have 'document_type' and 'content'")
