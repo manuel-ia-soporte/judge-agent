@@ -1,8 +1,6 @@
-from .analysis_requests import AnalysisType, AnalyzeCompanyRequest, CompareCompaniesRequest, GetFinancialMetricsRequest
+from .analysis_requests import AnalyzeCompanyRequest, CompareCompaniesRequest
 
 __all__ = [
-    "AnalysisType",
     "AnalyzeCompanyRequest",
     "CompareCompaniesRequest",
-    "GetFinancialMetricsRequest",
 ]

@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from typing import Dict, Any, List
 from uuid import UUID, uuid4
 
-from domain.models.entities import SECDocument
-from domain.services.financial_analysis_service import FinancialAnalysisService
-from domain.services.operational_analysis_service import OperationalAnalysisService
-from domain.services.strategic_analysis_service import StrategicAnalysisService
+from ...domain.models.entities import SECDocument
+from ...domain.services.financial_analysis_service import FinancialAnalysisService
+from ...domain.services.operational_analysis_service import OperationalAnalysisService
+from ...domain.services.strategic_analysis_service import StrategicAnalysisService
+
 
 
 @dataclass(frozen=True)

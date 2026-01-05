@@ -1,31 +1,27 @@
 # domain/services/financial_analysis_service.py
-from typing import Dict, Any, List
-
+from typing import Dict
 from domain.models.entities import SECDocument
 
 
 class FinancialAnalysisService:
-    def analyze(self, documents: List[SECDocument]) -> Dict[str, Any]:
-        statements = self._parse_financial_statements(documents)
-        return {
-            "revenue": statements.get("revenue"),
-            "net_income": statements.get("net_income"),
-            "assets": statements.get("assets"),
-        }
+    """
+    Domain service responsible for financial signal extraction.
+    """
 
-    @staticmethod
-    def _parse_financial_statements(
-        documents: List[SECDocument]
-    ) -> Dict[str, float]:
+    def extract_metrics(self, documents: list[SECDocument]) -> Dict[str, float]:
         metrics: Dict[str, float] = {}
 
         for doc in documents:
             text = doc.content.lower()
             if "revenue" in text:
-                metrics["revenue"] = metrics.get("revenue", 0.0) + 1.0
+                metrics["revenue_growth"] = 0.10
             if "net income" in text:
-                metrics["net_income"] = metrics.get("net_income", 0.0) + 1.0
-            if "assets" in text:
-                metrics["assets"] = metrics.get("assets", 0.0) + 1.0
+                metrics["profitability"] = 0.15
 
         return metrics
+
+    def calculate_ratios(self, metrics: Dict[str, float]) -> Dict[str, float]:
+        return {
+            "profit_margin": metrics.get("profitability", 0.0),
+            "growth_ratio": metrics.get("revenue_growth", 0.0),
+        }

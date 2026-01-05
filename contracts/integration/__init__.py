@@ -27,7 +27,7 @@ from .market_data_contracts import (
     MarketNewsItem,
     MarketNewsResponse,
 )
-# from .messaging_contracts import Message, MessageQueue, Subscription
+from .messaging_contracts import A2AMessage
 
 __all__ = [
     "SECFilingType",
@@ -52,7 +52,5 @@ __all__ = [
     "MarketDataResponse",
     "MarketNewsItem",
     "MarketNewsResponse",
-    # 'Message',
-    # 'MessageQueue',
-    # 'Subscription'
+    'A2AMessage',
 ]

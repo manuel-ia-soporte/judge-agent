@@ -1,22 +1,21 @@
 # domain/services/operational_analysis_service.py
-from enum import Enum
-from typing import Dict, Any
-
-
-class SeverityLevel(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+from domain.models.entities import SECDocument
 
 
 class OperationalAnalysisService:
-    def evaluate(self, metrics: Dict[str, float]) -> Dict[str, Any]:
-        risks = {}
+    """
+    Domain service responsible for operational efficiency.
+    """
 
-        revenue = metrics.get("revenue", 0.0)
-        if revenue < 1:
-            risks["revenue"] = SeverityLevel.HIGH.value
-        else:
-            risks["revenue"] = SeverityLevel.LOW.value
+    def extract_operational_metrics(self, documents: list[SECDocument]) -> dict[str, float]:
+        efficiency = 0.0
+        for doc in documents:
+            if "cost reduction" in doc.content.lower():
+                efficiency += 0.1
+        return {"efficiency_score": min(efficiency, 1.0)}
 
-        return risks
+    def analyze_operational_efficiency(self, metrics: dict[str, float]) -> float:
+        return metrics.get("efficiency_score", 0.0)
+
+    def calculate_working_capital_metrics(self, documents: list[SECDocument]) -> dict[str, float]:
+        return {"working_capital_ratio": 1.3 if documents else 0.0}

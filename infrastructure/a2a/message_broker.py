@@ -1,16 +1,10 @@
 # infrastructure/a2a/message_broker.py
-from typing import Dict
-
-from contracts.integration.messaging_contracts import A2AMessage
-
-
 class MessageBroker:
-    def __init__(self) -> None:
-        self._subscribers: Dict[str, list] = {}
+    def register_agent(self, agent_id: str, handler) -> None:
+        raise NotImplementedError
 
-    def subscribe(self, message_type: str, handler) -> None:
-        self._subscribers.setdefault(message_type, []).append(handler)
+    def unregister_agent(self, agent_id: str) -> None:
+        raise NotImplementedError
 
-    async def publish(self, message: A2AMessage) -> None:
-        for handler in self._subscribers.get(message.message_type, []):
-            await handler(message)
+    def route_message(self, sender: str, recipient: str, payload: dict) -> None:
+        raise NotImplementedError
