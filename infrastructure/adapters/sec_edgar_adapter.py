@@ -1,20 +1,28 @@
 # infrastructure/adapters/sec_edgar_adapter.py
-from domain.models.entities import SECDocument
-from infrastructure.sec_edgar.sec_client import SECClient
+
+from pathlib import Path
+from datetime import date
+from domain.entities.sec_filing import SECFiling
 
 
 class SECEdgarAdapter:
-    def __init__(self, client: SECClient) -> None:
-        self._client = client
+    """
+    Infrastructure adapter: File system → Domain filing
+    """
 
-    def find_by_cik(self, cik: str) -> list[SECDocument]:
-        filings = self._client.get_filings(cik)
-        return [
-            SECDocument(
-                cik=cik,
-                form_type=f.form,
-                filing_date=f.filing_date,
-                content=f.text,
-            )
-            for f in filings
-        ]
+    def load_filing(self, filing_path: Path) -> SECFiling:
+        if not filing_path.exists():
+            raise FileNotFoundError(f"SEC filing not found: {filing_path}")
+
+        text = filing_path.read_text(encoding="utf-8")
+
+        # Example: infer metadata from filename (can be replaced later)
+        form = filing_path.stem.split("_")[0]
+        filing_date = date.fromtimestamp(filing_path.stat().st_mtime)
+
+        return SECFiling(
+            form=form,
+            filing_date=filing_date,
+            text=text,
+            source_path=str(filing_path),
+        )

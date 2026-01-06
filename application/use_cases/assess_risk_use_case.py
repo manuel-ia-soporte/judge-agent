@@ -1,23 +1,23 @@
+# application/use_cases/assess_risk_use_case.py
 
-from dataclasses import dataclass
-from typing import Dict, Any
-
-from domain.services.operational_analysis_service import OperationalAnalysisService
-
-
-@dataclass(frozen=True)
-class AssessRiskCommand:
-    financial_metrics: Dict[str, float]
+from application.ports.analysis_ports import OperationalAnalysisPort
+from application.dtos.risk_dtos import RiskAssessmentDTO
 
 
 class AssessRiskUseCase:
-    def __init__(
-        self,
-        operational_service: OperationalAnalysisService,
-    ) -> None:
-        self._operational_service = operational_service
+    """
+    Coordinates operational risk evaluation.
+    """
 
-    def execute(self, command: AssessRiskCommand) -> Dict[str, Any]:
-        return self._operational_service.evaluate(
-            command.financial_metrics
+    def __init__(self, operational_analysis: OperationalAnalysisPort):
+        self._operational = operational_analysis
+
+    async def execute(self, company_cik: str) -> RiskAssessmentDTO:
+        operational_risk = await self._operational.evaluate(company_cik)
+
+        return RiskAssessmentDTO(
+            company_cik=company_cik,
+            operational_risk_assessment=operational_risk,
+            risk_level="medium",
+            confidence_level=0.8,
         )
