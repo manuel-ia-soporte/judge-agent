@@ -1,10 +1,8 @@
-from .comparison_strategy import (
-    ComparisonStrategy
-)
 from .analysis_strategy import AnalysisStrategy, FullAnalysisStrategy
+from .comparison_strategy import ComparisonStrategy
 
 __all__ = [
-    "ComparisonStrategy",
     "AnalysisStrategy",
+    "ComparisonStrategy",
     "ComparisonStrategy",
 ]

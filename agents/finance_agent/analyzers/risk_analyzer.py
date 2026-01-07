@@ -1,17 +1,21 @@
 # agents/finance_agent/analyzers/risk_analyzer.py
-from typing import Dict
+
+from typing import Dict, Any
 
 
 class RiskAnalyzer:
-    def analyze(self, operational_risks: Dict[str, str]) -> int:
-        severity_weights = {
-            "low": 10,
-            "medium": 50,
-            "high": 90,
-        }
+    """
+    Domain analyzer responsible ONLY for computing risk
+    from already-extracted financial signals.
+    """
 
-        scores = [
-            severity_weights.get(level, 50)
-            for level in operational_risks.values()
-        ]
-        return int(sum(scores) / max(1, len(scores)))
+    def analyze(self, financial_signals: Dict[str, float]) -> Dict[str, Any]:
+        if not financial_signals:
+            return {"risk_score": 0.0, "risk_level": "unknown"}
+
+        score = sum(financial_signals.values()) / len(financial_signals)
+
+        return {
+            "risk_score": round(score, 2),
+            "risk_level": "high" if score >= 0.7 else "medium",
+        }

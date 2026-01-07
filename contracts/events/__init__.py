@@ -1,34 +1,11 @@
 # contracts/events/__init__.py
 """Event contracts for the system."""
 
-from .analysis_events import AnalysisEvent, AnalysisStartedEvent, AnalysisCompletedEvent
-from .risk_events import RiskEvent, RiskEventType, RiskAssessmentStartedEvent, RiskAssessmentCompletedEvent, RiskFactorIdentifiedEvent, RiskMitigationProposedEvent, RiskThresholdExceededEvent, RiskMonitoringTriggeredEvent
-from .agent_events import (
-    AgentEventType,
-    AgentEvent,
-    AgentRegisteredEvent,
-    AgentDeregisteredEvent,
-    AgentStatusChangedEvent,
-    AgentCapabilitiesUpdatedEvent,
-    AgentTaskAssignedEvent,
-    AgentTaskCompletedEvent,
-    AgentTaskFailedEvent,
-    AgentHealthChangedEvent,
-    AgentMetricsUpdatedEvent,
-)
+from .agent_events import (AgentEventType, AgentEvent, AgentRegisteredEvent, AgentDeregisteredEvent, AgentStatusChangedEvent, AgentCapabilitiesUpdatedEvent, AgentTaskAssignedEvent, AgentTaskCompletedEvent, AgentTaskFailedEvent, AgentHealthChangedEvent, AgentMetricsUpdatedEvent,)
+from .analysis_events import ( AnalysisEventType, AnalysisEvent, AnalysisStartedEvent, AnalysisProgressEvent, DocumentsFetchedEvent, MetricsExtractedEvent, RisksIdentifiedEvent, AnalysisCompletedEvent, AnalysisFailedEvent, AnalysisValidatedEvent, AnalysisPublishedEvent, )
+from .risk_events import ( RiskEventType, RiskEvent, RiskAssessmentStartedEvent, RiskFactorIdentifiedEvent, RiskMitigationProposedEvent, RiskAssessmentCompletedEvent, RiskThresholdExceededEvent, RiskMonitoringTriggeredEvent)
 
 __all__ = [
-    'AnalysisEvent',
-    'AnalysisStartedEvent',
-    'AnalysisCompletedEvent',
-    'RiskEvent',
-    'RiskEventType',
-    'RiskAssessmentStartedEvent',
-    'RiskAssessmentCompletedEvent',
-    'RiskFactorIdentifiedEvent',
-    'RiskMitigationProposedEvent',
-    'RiskThresholdExceededEvent',
-    'RiskMonitoringTriggeredEvent',
     'AgentEventType',
     'AgentEvent',
     'AgentRegisteredEvent',
@@ -40,4 +17,23 @@ __all__ = [
     'AgentTaskFailedEvent',
     'AgentHealthChangedEvent',
     'AgentMetricsUpdatedEvent',
+    "AnalysisEventType",
+    "AnalysisEvent",
+    "AnalysisStartedEvent",
+    "AnalysisProgressEvent",
+    "DocumentsFetchedEvent",
+    "MetricsExtractedEvent",
+    "RisksIdentifiedEvent",
+    "AnalysisCompletedEvent",
+    "AnalysisFailedEvent",
+    "AnalysisValidatedEvent",
+    "AnalysisPublishedEvent",
+    'RiskEventType',
+    'RiskEvent',
+    'RiskAssessmentStartedEvent',
+    'RiskAssessmentCompletedEvent',
+    'RiskFactorIdentifiedEvent',
+    'RiskMitigationProposedEvent',
+    'RiskThresholdExceededEvent',
+    'RiskMonitoringTriggeredEvent',
 ]

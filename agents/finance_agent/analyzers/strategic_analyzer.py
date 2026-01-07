@@ -1,3 +1,4 @@
+# agents/finance_agent/analyzers/strategic_analyzer.py
 from domain.services.strategic_analysis_service import StrategicAnalysisService
 from domain.models.entities import SECDocument
 
