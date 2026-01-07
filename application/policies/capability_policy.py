@@ -1,3 +1,4 @@
+# application/policies/capability_policy.py
 from typing import Protocol
 
 

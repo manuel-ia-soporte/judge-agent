@@ -1,3 +1,4 @@
+# application/policies/simple_role_policy.py
 class SimpleRolePolicy:
     """
     Very simple role-based capability policy.
