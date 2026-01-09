@@ -116,7 +116,7 @@ class RatioAnalysisDTO:
 
 
 @dataclass
-class TrendAnalysisResultDTO:
+class TrendFinancialAnalysisResultDTO:
     """DTO for trend analysis results"""
 
     metric_name: str

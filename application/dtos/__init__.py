@@ -1,12 +1,12 @@
 from .analysis_dtos import AnalysisStatus, FinancialMetricDTO, FinancialRatioDTO, TrendAnalysisDTO, AnalysisResultDTO, ComparisonResultDTO, QuickAnalysisDTO
-from .financial_dtos import (FinancialStatementType, MetricConfidence, FinancialStatementDTO, FinancialMetricSeriesDTO, RatioAnalysisDTO, TrendAnalysisResultDTO, FinancialForecastDTO, ValuationDTO,)
-from .risk_dtos import (RiskSeverity, RiskCategory, RiskFactorDTO, RiskAssessmentDTO, RiskTrendDTO, RiskExposureDTO, RiskProfileComparisonDTO)
+from .financial_dtos import (FinancialStatementType, MetricConfidence, FinancialStatementDTO, FinancialMetricSeriesDTO, RatioAnalysisDTO, TrendFinancialAnalysisResultDTO, FinancialForecastDTO, ValuationDTO,)
+from .risk_dtos import (RiskSeverity, RiskCategory, RiskFactorDTO, RiskAssessmentDTO, RiskTrendDTO, RiskExposureDTO, RiskProfileComparisonDTO, RiskLevelDTO, FinancialMetricsDTO, RiskAnalysisResultDTO)
 
 __all__ = [
     "AnalysisStatus",
     "FinancialMetricDTO",
     'FinancialRatioDTO',
-    'TrendAnalysisResultDTO',
+    'TrendAnalysisDTO',
     'TrendAnalysisDTO',
     "AnalysisResultDTO",
     "ComparisonResultDTO",
@@ -16,6 +16,7 @@ __all__ = [
     "FinancialStatementDTO",
     "FinancialMetricSeriesDTO",
     "RatioAnalysisDTO",
+    'TrendFinancialAnalysisResultDTO',
     "FinancialForecastDTO",
     "ValuationDTO",
     "RiskSeverity",
@@ -25,4 +26,7 @@ __all__ = [
     "RiskTrendDTO",
     "RiskExposureDTO",
     "RiskProfileComparisonDTO",
+    "RiskLevelDTO",
+    "FinancialMetricsDTO",
+    "RiskAnalysisResultDTO",
 ]

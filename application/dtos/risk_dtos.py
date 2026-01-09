@@ -3,6 +3,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from pydantic import BaseModel,Field
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
@@ -199,3 +200,26 @@ class RiskProfileComparisonDTO:
             "rankings": self.rankings,
             "key_differences": self.key_differences
         }
+
+
+class RiskLevelDTO(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+class FinancialMetricsDTO(BaseModel):
+    """DTO for financial metrics input"""
+    debt: float = 0.0
+    equity: float = 1.0
+    revenue: float = 1.0
+    net_income: float = 0.0
+    ebitda: float = 0.0
+    cash: float = 0.0
+
+class RiskAnalysisResultDTO(BaseModel):
+    """DTO for risk analysis output"""
+    risk_score: float = Field(ge=0.0, le=1.0, description="Risk score between 0 and 1")
+    risk_level: RiskLevelDTO
+    explanation: str
+    key_metrics: Dict[str, float]
+    risk_factors: Optional[List[str]] = None

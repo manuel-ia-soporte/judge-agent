@@ -3,6 +3,6 @@ from .comparison_strategy import ComparisonStrategy
 
 __all__ = [
     "AnalysisStrategy",
-    "ComparisonStrategy",
+    "FullAnalysisStrategy",
     "ComparisonStrategy",
 ]

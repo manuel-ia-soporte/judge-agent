@@ -1,5 +1,5 @@
 from .analyze_company_command import AnalysisType, AnalyzeCompanyCommand, QuickAnalysisCommand, UpdateAnalysisCommand
-from .compare_companies_command import ComparisonType, IndustryComparisonCommand, PeerComparisonCommand
+from .compare_companies_command import ComparisonType, IndustryComparisonCommand, PeerComparisonCommand, CompareCompaniesCommand
 
 __all__ = [
     "AnalysisType",
@@ -7,6 +7,7 @@ __all__ = [
     "QuickAnalysisCommand",
     "UpdateAnalysisCommand",
     "ComparisonType",
+    "CompareCompaniesCommand",
     "IndustryComparisonCommand",
     "PeerComparisonCommand",
 ]

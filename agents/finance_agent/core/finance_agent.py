@@ -10,6 +10,7 @@ from agents.finance_agent.core.agent_capabilities import (
     CapabilitySchema,
 )
 from application.use_cases.analyze_company_use_case import AnalyzeCompanyCommand
+from application.dtos.analysis_dtos import AnalysisResultDTO
 
 
 class FinanceAgent:
@@ -58,17 +59,8 @@ class FinanceAgent:
     def get_capability(self, name: str) -> AgentCapability:
         return self._capabilities.get(name)
 
-    async def analyze(self, command: AnalyzeCompanyCommand) -> Dict[str, Any]:
-        result = await self._strategy.execute(command)
-
-        risk = self._risk_analyzer.analyze(
-            result.financial_assessment or {}
-        )
-
-        return {
-            "analysis": result.to_dict(),
-            "risk": risk,
-        }
+    async def analyze(self, command: AnalyzeCompanyCommand) -> AnalysisResultDTO:
+        return await self._strategy.execute(command)
 
     def compare(self, analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
         return self._comparison_strategy.compare(analyses)
