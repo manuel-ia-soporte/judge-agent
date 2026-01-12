@@ -104,7 +104,7 @@ class AnalysisResultDTO:
     company_cik: str
     analysis_type: str
     analysis_date: datetime = field(default_factory=datetime.now)
-    status: AnalysisStatus = AnalysisStatus.COMPLETED
+    status: str = AnalysisStatus.COMPLETED
 
     # Analysis results
     metrics: List[Dict[str, Any]] = field(default_factory=list)

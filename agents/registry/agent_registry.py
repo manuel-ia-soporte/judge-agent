@@ -11,3 +11,6 @@ class AgentRegistry:
 
     def get(self, name: str) -> Any:
         return self._agents[name]
+
+    def list_agents(self) -> Dict[str, Any]:  # ← ADD THIS
+        return self._agents

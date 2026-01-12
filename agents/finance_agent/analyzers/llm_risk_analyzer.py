@@ -1,4 +1,8 @@
 # agents/finance_agent/analyzers/llm_risk_analyzer.py
+### SHOULD IMPLEMENT
+# LLMRiskAnalyzer
+# currently just placeholder
+
 from typing import Dict
 from dataclasses import dataclass
 import time

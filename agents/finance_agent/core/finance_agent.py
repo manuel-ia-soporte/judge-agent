@@ -26,6 +26,29 @@ class FinanceAgent:
         self._capabilities = CapabilityRegistry()
         self._register_capabilities()
 
+    async def quick_analyze(self, command: AnalyzeCompanyCommand) -> AnalysisResultDTO:
+        """
+        Quick analysis variant (e.g., uses fewer documents, skips deep risk).
+        Reuses main analysis strategy with adjusted command.
+        """
+        # Optionally override command fields for "quick" mode
+        command.depth_level = "executive"
+        command.include_trends = False
+        command.include_comparisons = False
+        return await self.analyze(command)
+
+    def list_capabilities(self) -> Dict[str, AgentCapability]:
+        return self._capabilities.list()
+
+    def get_capability(self, name: str) -> AgentCapability:
+        return self._capabilities.get(name)
+
+    async def analyze(self, command: AnalyzeCompanyCommand) -> AnalysisResultDTO:
+        return await self._strategy.execute(command)
+
+    def compare(self, analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
+        return self._comparison_strategy.compare(analyses)
+
     def _register_capabilities(self) -> None:
         self._capabilities.register(
             AgentCapability(
@@ -53,14 +76,16 @@ class FinanceAgent:
             )
         )
 
-    def list_capabilities(self) -> Dict[str, AgentCapability]:
-        return self._capabilities.list()
+        self._capabilities.register(
+            AgentCapability(
+                name="quick_analyze",
+                schema=CapabilitySchema(
+                    input_type=AnalyzeCompanyCommand,
+                    output_type=dict,
+                    description="Quick company analysis",
+                ),
+                handler=self.quick_analyze,
+                required_permission="finance:analyze",
+            )
+        )
 
-    def get_capability(self, name: str) -> AgentCapability:
-        return self._capabilities.get(name)
-
-    async def analyze(self, command: AnalyzeCompanyCommand) -> AnalysisResultDTO:
-        return await self._strategy.execute(command)
-
-    def compare(self, analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
-        return self._comparison_strategy.compare(analyses)

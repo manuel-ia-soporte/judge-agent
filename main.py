@@ -1,34 +1,40 @@
 # main.py
-"""
-Main application with Dependency Injection.
-Follows Hexagonal Architecture: core logic is independent of infrastructure.
-"""
-
-import asyncio
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import AsyncGenerator
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-# === Domain Services (Core Business Logic) ===
+# === Domain Services (Pure Business Logic) ===
 from domain.services.financial_analysis_service import FinancialAnalysisService
 from domain.services.operational_analysis_service import OperationalAnalysisService
 from domain.services.strategic_analysis_service import StrategicAnalysisService
 from domain.services.risk_assessment_service import RiskAssessmentService
 from domain.services.rubrics_service import RubricsService
-from domain.services.evaluation_service import EvaluationService
 
-# === Application Use Cases ===
+# === Application Use Cases (Orchestrators) ===
 from application.use_cases.analyze_company_use_case import AnalyzeCompanyUseCase
-from application.use_cases.compare_companies_use_case import CompareCompaniesUseCase
 from application.use_cases.assess_risk_use_case import AssessRiskUseCase
 from application.use_cases.evaluate_analysis import EvaluateAnalysisUseCase
 from application.use_cases.score_rubrics import ScoreRubricsUseCase
 
-# === Infrastructure Adapters ===
+# === Application Ports (Interfaces) ===
+from application.ports.analysis_ports import (
+    FinancialAnalysisPort,
+    OperationalAnalysisPort,
+    StrategicAnalysisPort,
+)
+from application.ports.sec_filing_port import SECFilingPort
+
+# === Infrastructure Adapters (Implement Ports) ===
+from infrastructure.adapters.analysis_adapters import (
+    FinancialAnalysisAdapter,
+    OperationalAnalysisAdapter,
+    StrategicAnalysisAdapter,
+)
 from infrastructure.adapters.sec_edgar_adapter import SECEdgarAdapter
-from infrastructure.external.sec_client import SECClient
 
 # === Agents ===
 from agents.finance_agent.core.finance_agent import FinanceAgent
@@ -36,104 +42,83 @@ from agents.finance_agent.strategies.analysis_strategy import FullAnalysisStrate
 from agents.judge_agent.judge_agent import JudgeAgent
 from agents.registry.agent_registry import AgentRegistry
 
-# === Policies & Security ===
-from application.policies.simple_role_policy import SimpleRolePolicy
+# === Policies ===
+# from application.policies.simple_role_policy import SimpleRolePolicy
 
-# === Audit & Observability ===
-from infrastructure.audit.capability_audit_logger import CapabilityAuditLogger
-
-# === API Routers ===
+# === Routers ===
 from api.routers.analysis_router import router as analysis_router
 
-
-# Configure structured logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class DependencyContainer:
-    """
-    Dependency Injection Container (Composition Root).
-    Implements Inversion of Control: infrastructure depends on core, not vice versa.
-    """
+    """Composition Root: All dependencies wired here."""
 
     def __init__(self):
-        logger.info("🔧 Initializing Dependency Container...")
+        # --- Infrastructure Adapters (Outer Layer) ---
+        sec_adapter: SECFilingPort = SECEdgarAdapter()
 
-        # --- Infrastructure Layer ---
-        sec_client = SECClient()
-        self.sec_adapter = SECEdgarAdapter(sec_client)
-        self.audit_logger = CapabilityAuditLogger()
-
-        # --- Policy (Security Boundary) ---
-        self.role_policy = SimpleRolePolicy({
-            "analyst": {"finance:analyze", "finance:compare"},
-            "judge": {"judge:evaluate"},
-            "admin": {"finance:*", "judge:*"}
-        })
-
-        # --- Domain Services (Pure Business Logic) ---
+        # --- Domain Services (Core) ---
         financial_svc = FinancialAnalysisService()
         operational_svc = OperationalAnalysisService()
         strategic_svc = StrategicAnalysisService()
         risk_svc = RiskAssessmentService()
         rubrics_svc = RubricsService()
-        evaluation_svc = EvaluationService()
 
-        # --- Application Use Cases (Orchestrators) ---
-        self.risk_use_case = AssessRiskUseCase(operational_analysis=operational_svc)
+        # --- Port Adapters (Bridge Core ↔ App) ---
+        financial_port: FinancialAnalysisPort = FinancialAnalysisAdapter(financial_svc)
+        operational_port: OperationalAnalysisPort = OperationalAnalysisAdapter(operational_svc)
+        strategic_port: StrategicAnalysisPort = StrategicAnalysisAdapter(strategic_svc)
 
-        self.analyze_use_case = AnalyzeCompanyUseCase(
-            financial_analysis=financial_svc,
-            operational_analysis=operational_svc,
-            strategic_analysis=strategic_svc,
+        # --- Use Cases (Application Layer) ---
+        risk_use_case = AssessRiskUseCase(operational_analysis=operational_port)
+        analyze_use_case = AnalyzeCompanyUseCase(
+            financial_analysis=financial_port,
+            operational_analysis=operational_port,
+            strategic_analysis=strategic_port,
         )
+        score_rubrics = ScoreRubricsUseCase(rubrics_service=rubrics_svc)
+        evaluate_use_case = EvaluateAnalysisUseCase(score_rubrics_use_case=score_rubrics)
 
-        self.compare_use_case = CompareCompaniesUseCase(
+        # --- Agents ---
+        strategy = FullAnalysisStrategy(
+            risk_use_case=risk_use_case,
+            sec_port=sec_adapter,
             financial_service=financial_svc,
             operational_service=operational_svc,
             strategic_service=strategic_svc,
-            risk_service=risk_svc,
         )
-
-        score_rubrics = ScoreRubricsUseCase(rubrics_service=rubrics_svc)
-        self.evaluate_use_case = EvaluateAnalysisUseCase(score_rubrics=score_rubrics)
-
-        # --- Agents (Orchestrators with Capabilities) ---
-        strategy = FullAnalysisStrategy(risk_use_case=self.risk_use_case)
         self.finance_agent = FinanceAgent(strategy=strategy)
-        self.judge_agent = JudgeAgent(evaluate_use_case=self.evaluate_use_case)
+        self.judge_agent = JudgeAgent(evaluate_use_case=evaluate_use_case)
 
-        # --- Agent Registry (Service Locator for Inter-Agent Coordination) ---
+        # --- Registry ---
         self.agent_registry = AgentRegistry()
         self.agent_registry.register("finance", self.finance_agent)
         self.agent_registry.register("judge", self.judge_agent)
 
-        logger.info("✅ Dependency Container ready.")
+    def get_finance_agent(self) -> FinanceAgent:
+        return self.finance_agent
 
-    async def start(self):
-        """Async startup hook."""
-        await asyncio.sleep(0)  # placeholder for real async init (e.g., warm caches)
 
-    async def shutdown(self):
-        """Graceful shutdown."""
-        logger.info("Shutting down services...")
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger.info("🚀 Starting Finance Judge System...")
+    container = app.state.container
+    await container.start()
+    yield
+    await container.shutdown()
+    logger.info("🛑 Finance Judge System stopped.")
 
 
 def create_app() -> FastAPI:
-    """Factory function to create the FastAPI app with full wiring."""
     app = FastAPI(
         title="Finance Judge System",
         description="Multi-agent financial intelligence platform",
         version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
-    # CORS (adjust in production)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -142,14 +127,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Create shared container
     container = DependencyContainer()
+    app.state.container = container
 
-    # Dependency provider for routers
-    def get_finance_agent():
-        return container.finance_agent
+    def get_finance_agent() -> FinanceAgent:
+        return container.get_finance_agent()
 
-    # Mount routers
     app.include_router(
         analysis_router,
         prefix="/api/v1/analysis",
@@ -157,36 +140,24 @@ def create_app() -> FastAPI:
         dependencies=[Depends(get_finance_agent)],
     )
 
-    # Health & discovery endpoints
     @app.get("/health")
     async def health_check():
         return {
             "status": "healthy",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "agents": list(container.agent_registry._agents.keys()),
+            "agents": list(container.agent_registry.list_agents().keys()),
         }
 
     @app.get("/agents")
     async def list_agents():
         return {"agents": container.agent_registry.list_agents()}
 
-    # Lifecycle events
-    @app.on_event("startup")
-    async def on_startup():
-        logger.info("🚀 Starting Finance Judge System...")
-        await container.start()
-
-    @app.on_event("shutdown")
-    async def on_shutdown():
-        await container.shutdown()
-        logger.info("🛑 Finance Judge System stopped.")
-
     return app
 
 
-# Entry point
+# Composition Root
 app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

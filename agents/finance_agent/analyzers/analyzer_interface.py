@@ -1,7 +1,7 @@
 # agents/finance_agent/analyzers/analyzer_interface.py
 from abc import ABC, abstractmethod
 from typing import Dict, Any
-from ....application.commands.analyze_company_command import AnalyzeCompanyCommand
+from application.commands.analyze_company_command import AnalyzeCompanyCommand
 
 
 # Strategy Pattern Interface

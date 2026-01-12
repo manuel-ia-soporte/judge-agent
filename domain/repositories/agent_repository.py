@@ -1,4 +1,13 @@
 # domain/repositories/agent_repository.py
+### MODIFICATIONS
+#
+# - It should be only INTERFACES
+# - The classes
+#   InMemoryAgentRepository
+#   CachedAgentRepository
+#   AgentRepositoryFactory
+#   Should be in other place
+
 from typing import List, Optional, Dict, Set
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, UTC
