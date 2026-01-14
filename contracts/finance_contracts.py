@@ -27,7 +27,8 @@ class SECFilingRequest(BaseModel):
     include_attachments: bool = Field(default=False)
 
     @field_validator('company_cik')
-    def validate_cik(self, v):
+    @classmethod
+    def validate_cik(cls, v):
         if not v.isdigit() or len(v) > 10:
             raise ValueError("CIK must be numeric and up to 10 digits")
         return v.zfill(10)
@@ -75,8 +76,9 @@ class MarketDataRequest(BaseModel):
     metrics: List[str] = Field(default_factory=lambda: ["close", "volume"])
 
     @field_validator('end_date')
-    def validate_dates(self, v, values):
-        if 'start_date' in values and v <= values['start_date']:
+    @classmethod
+    def validate_dates(cls, v, info):
+        if hasattr(info, 'data') and 'start_date' in info.data and v <= info.data['start_date']:
             raise ValueError("end_date must be after start_date")
         return v
 

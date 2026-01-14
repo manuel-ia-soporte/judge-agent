@@ -33,8 +33,9 @@ class FullAnalysisStrategy(AnalysisStrategy):
         strategic_service: StrategicAnalysisService,
     ):
         self._sec_adapter = SECEdgarAdapter()
+        # Analyzers - some require services
         self._financial_analyzer = FinancialAnalyzer(financial_service)
-        self._operational_analyzer = OperationalAnalyzer(operational_service)
+        self._operational_analyzer = OperationalAnalyzer()
         self._strategic_analyzer = StrategicAnalyzer(strategic_service)
         self._risk_analyzer = HybridRiskAnalyzer()
         self._risk_use_case = risk_use_case

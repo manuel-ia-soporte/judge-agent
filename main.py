@@ -79,7 +79,7 @@ class DependencyContainer:
             strategic_analysis=strategic_port,
         )
         score_rubrics = ScoreRubricsUseCase(rubrics_service=rubrics_svc)
-        evaluate_use_case = EvaluateAnalysisUseCase(score_rubrics_use_case=score_rubrics)
+        evaluate_use_case = EvaluateAnalysisUseCase(score_rubrics=score_rubrics)
 
         # --- Agents ---
         strategy = FullAnalysisStrategy(

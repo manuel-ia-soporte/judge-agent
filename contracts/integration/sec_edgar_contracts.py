@@ -32,14 +32,16 @@ class SECFilingRequest(BaseModel):
     limit: int = Field(10, ge=1, le=100, description="Maximum number of filings")
 
     @field_validator('company_cik')
-    def validate_cik(self, v):
+    @classmethod
+    def validate_cik(cls, v):
         if not v.isdigit() or len(v) > 10:
             raise ValueError("CIK must be numeric and up to 10 digits")
         return v.zfill(10)
 
     @field_validator('end_date')
-    def validate_dates(self, v, values):
-        if v and 'start_date' in values and values['start_date'] and v < values['start_date']:
+    @classmethod
+    def validate_dates(cls, v, info):
+        if v and hasattr(info, 'data') and 'start_date' in info.data and info.data['start_date'] and v < info.data['start_date']:
             raise ValueError("end_date must be after start_date")
         return v
 
@@ -105,7 +107,8 @@ class SECCompanyFactsRequest(BaseModel):
     taxonomy: str = Field("us-gaap", description="XBRL taxonomy")
 
     @field_validator('company_cik')
-    def validate_cik(self, v):
+    @classmethod
+    def validate_cik(cls, v):
         if not v.isdigit() or len(v) > 10:
             raise ValueError("CIK must be numeric and up to 10 digits")
         return v.zfill(10)

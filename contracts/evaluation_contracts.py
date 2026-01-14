@@ -45,7 +45,8 @@ class EvaluationRequest(BaseModel):
     context: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator('source_documents')
-    def validate_source_documents(self, v):
+    @classmethod
+    def validate_source_documents(cls, v):
         for doc in v:
             if 'document_type' not in doc or 'content' not in doc:
                 raise ValueError("Source documents must have 'document_type' and 'content'")
