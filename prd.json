@@ -1,0 +1,538 @@
+{
+  "product_name": "Financial Intelligence Governance Platform",
+  "product_type": "Multi-Agent Financial Benchmarking and Governance System",
+
+  "vision": {
+    "statement": "Provide trustworthy, auditable, and comparable AI-generated financial intelligence by governing multi-agent analysis through benchmark evaluation, judge-based scoring, and leaderboard-driven oversight.",
+    "core_principle": "Financial intelligence is not trusted unless it is evaluated, scored, compared, and auditable."
+  },
+
+  "generation_constraints": {
+    "project_type": "greenfield",
+    "assume_existing_codebase": false,
+    "overwrite_existing_files": false,
+    "require_empty_target_directory": true
+  },
+
+  "primary_goals": {
+    "automated_financial_analysis": true,
+    "regulatory_compliance_auditing": true,
+    "multi_agent_research_platform": true,
+    "financial_intelligence_governance": true,
+    "benchmarking_and_comparability": true
+  },
+
+  "supported_users": [
+    "Financial Analysts",
+    "Compliance Officers",
+    "Investment Researchers",
+    "Internal Audit Teams",
+    "AI Governance Teams"
+  ],
+
+  "system_scope": {
+    "in_scope": [
+      "SEC filing analysis (10-K, 10-Q, 8-K)",
+      "Multi-agent financial reasoning",
+      "Judge-based evaluation",
+      "Benchmark execution",
+      "Leaderboard aggregation",
+      "Audit and traceability"
+    ],
+    "out_of_scope": [
+      "Personalized investment advice",
+      "Automated trading",
+      "Portfolio management",
+      "UI-first dashboards"
+    ]
+  },
+
+  "runtime_targets": {
+    "supported_runtimes": [
+      "factory.ai Droid",
+      "OpenHands",
+      "Claude Open"
+    ],
+    "execution_model": "Stateless, replayable agent execution",
+    "integration_protocols": [
+      "Agent-to-Agent (A2A)",
+      "Model Context Protocol (MCP)"
+    ]
+  },
+
+  "agent_model": {
+    "analysis_agents": [
+      "Factual Accuracy",
+      "Source Fidelity (SEC / EDGAR grounding)",
+      "Regulatory Compliance",
+      "Financial Reasoning Quality",
+      "Materiality & Relevance",
+      "Completeness",
+      "Consistency",
+      "Temporal Validity",
+      "Risk Awareness",
+      "Clarity & Interpretability",
+      "Uncertainty Handling",
+      "Actionability (optional)"
+    ],
+    "judge_agents": [
+      "DeterministicCorrectnessJudge",
+      "ComplianceJudge",
+      "FinancialReasoningJudge",
+      "MaterialityJudge",
+      "ConsistencyJudge"
+    ],
+    "governance_agents": [
+      "PurpleOversightAgent",
+      "PurplePolicyEnforcementAgent"
+    ]
+  },
+
+  "rubric_framework": {
+    "rubrics": [
+      "Factual Accuracy",
+      "Source Fidelity  (SEC / EDGAR grounding)",
+      "Regulatory Compliance",
+      "Financial Reasoning Quality",
+      "Materiality  & Relevance",
+      "Completeness",
+      "Consistency",
+      "Temporal Validity",
+      "Risk Awareness",
+      "Clarity & Interpretability",
+      "Uncertainty Handling",
+      "Actionability (optional)"
+    ],
+    "scoring_scale": {
+      "0": "Fail",
+      "1": "Partial",
+      "2": "Pass"
+    }
+  },
+
+  "benchmark_tracks": [
+    {
+      "id": "task_accuracy",
+      "description": "Measures correctness and factual alignment with source SEC filings.",
+      "judges": ["DeterministicCorrectnessJudge"],
+      "outputs": ["results.json", "summary.json"]
+    },
+    {
+      "id": "analysis_quality",
+      "description": "Evaluates reasoning quality, materiality, and compliance of financial analysis.",
+      "judges": [
+        "ComplianceJudge",
+        "FinancialReasoningJudge",
+        "MaterialityJudge",
+        "ConsistencyJudge"
+      ],
+      "outputs": ["results.json", "summary.json"]
+    }
+  ],
+
+  "leaderboard": {
+    "purpose": "Aggregate, compare, and rank benchmark results across agents, versions, and runs to enable governance, regression detection, and certification.",
+    "entities_ranked": [
+      "agent",
+      "agent_version",
+      "prompt_version",
+      "model_version",
+      "pipeline_run"
+    ],
+    "inputs": [
+      "summary.json",
+      "rubric_scores",
+      "run_metadata",
+      "trace_id"
+    ],
+    "aggregation_rules": {
+      "per_track_ranking": true,
+      "composite_score_optional": true,
+      "compliance_is_hard_gate": true
+    },
+    "outputs": [
+      "leaderboard.json",
+      "leaderboard.md"
+    ],
+    "governance_usage": [
+      "Agent certification",
+      "Regression detection",
+      "Marketplace eligibility",
+      "Audit review"
+    ]
+  },
+
+  "task_priorities": {
+    "P0": "Bloqueante para tener el benchmark end-to-end usable (core).",
+    "P1": "Importante pero no bloqueante (integraciones/ergonomía).",
+    "P2": "Nice-to-have / mejoras opcionales."
+  },
+
+  "functional_requirements": {
+    "Ingest and normalize SEC filings into structured evidence artifacts": {
+      "id": "FR-1",
+      "priority": "P0",
+      "acceptance_criteria": [
+        "Supports 10-K, 10-Q, and 8-K filings",
+        "Produces normalized, structured evidence artifacts",
+        "All extracted data is traceable to source filings",
+        "No inferred or speculative data is introduced"
+      ]
+    },
+
+    "Execute specialized analysis agents against shared evidence": {
+      "id": "FR-2",
+      "priority": "P0",
+      "acceptance_criteria": [
+        "Multiple agents can run on the same evidence",
+        "Agents are stateless and deterministic",
+        "Agent outputs reference evidence identifiers"
+      ]
+    },
+
+    "Evaluate agent outputs using independent Judge Agents and rubric-based scoring": {
+      "id": "FR-3",
+      "priority": "P0",
+      "acceptance_criteria": [
+        "Each output is evaluated by judges",
+        "Rubrics are applied consistently",
+        "Scores include rationales"
+      ]
+    },
+
+    "Persist benchmark results, rubric scores, and rationales": {
+      "id": "FR-4",
+      "priority": "P0",
+      "acceptance_criteria": [
+        "Artifacts are versioned and timestamped",
+        "Artifacts are sufficient for replay",
+        "Artifacts are immutable once stored"
+      ]
+    },
+
+    "Expose benchmark execution via A2A and MCP protocols": {
+      "id": "FR-5",
+      "priority": "P1",
+      "acceptance_criteria": [
+        "Benchmarks can be triggered programmatically",
+        "Protocols do not leak into domain logic"
+      ]
+    },
+
+    "Aggregate benchmark outputs into leaderboard rankings": {
+      "id": "FR-6",
+      "priority": "P0",
+      "acceptance_criteria": [
+        "Leaderboard uses only persisted artifacts",
+        "Compliance failures exclude entries",
+        "Ranking is deterministic"
+      ]
+    },
+
+    "Support comparison across agents, versions, and time": {
+      "id": "FR-7",
+      "priority": "P1",
+      "acceptance_criteria": [
+        "Historical benchmark comparisons are possible",
+        "Regression detection is supported"
+      ]
+    },
+
+    "Produce both machine-readable and human-readable outputs": {
+      "id": "FR-8",
+      "priority": "P0",
+      "acceptance_criteria": [
+        "JSON outputs are schema-consistent",
+        "Markdown outputs are audit-friendly"
+      ]
+    },
+    "Oversee judge behavior and enforce governance policies": {
+      "id": "FR-9",
+      "priority": "P0",
+      "acceptance_criteria": [
+        "Detect conflicting judge scores",
+        "Enforce compliance gating rules",
+        "Flag anomalous or biased evaluations",
+        "Produce governance audit artifacts"
+      ]
+    }
+  },
+
+  "non_functional_requirements": {
+    "All evaluations must be reproducible and replayable": {
+      "id": "NFR-1",
+      "requirements": [
+        "Same inputs yield same outputs",
+        "All parameters and versions are recorded",
+        "Replay does not require external state"
+      ]
+    },
+
+    "The system must enforce regulatory-safe language": {
+      "id": "NFR-2",
+      "requirements": [
+        "No investment advice",
+        "No forecasts or guarantees",
+        "Neutral descriptive language only"
+      ]
+    },
+
+    "Judgments must be explainable and auditable": {
+      "id": "NFR-3",
+      "requirements": [
+        "Every score has a rationale",
+        "Rationales reference evidence or rubric rules"
+      ]
+    },
+
+    "The system must be extensible without modifying core orchestration": {
+      "id": "NFR-4",
+      "requirements": [
+        "Agents are pluggable",
+        "Judges are independently registered"
+      ]
+    },
+
+    "Leaderboard rankings must be derived only from persisted benchmark artifacts": {
+      "id": "NFR-5",
+      "requirements": [
+        "No live or transient data",
+        "Offline reproduction is possible"
+      ]
+    },
+
+    "The system must not leak sensitive or proprietary data": {
+      "id": "NFR-6",
+      "requirements": [
+        "Access control over traces",
+        "No raw filing exposure"
+      ]
+    }
+  },
+
+  "tasks": [
+    {
+      "id": "T-01",
+      "priority": "P0",
+      "title": "Define benchmark artifact formats",
+      "passes": false,
+      "related_requirements": [
+        "Persist benchmark results, rubric scores, and rationales",
+        "All evaluations must be reproducible and replayable"
+      ],
+      "deliverables": [
+        "results.json specification",
+        "summary.json specification"
+      ],
+      "acceptance_criteria": [
+        "Artifacts are sufficient for replay and ranking"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "T-02",
+      "priority": "P0",
+      "title": "Define rubric and judge responsibility model",
+      "passes": false,
+      "related_requirements": [
+        "Evaluate agent outputs using independent Judge Agents and rubric-based scoring",
+        "Judgments must be explainable and auditable"
+      ],
+      "deliverables": [
+        "Rubric definitions",
+        "Judge responsibility matrix"
+      ],
+      "acceptance_criteria": [
+        "Each rubric is unambiguous",
+        "Judges have non-overlapping roles"
+      ],
+      "dependencies": ["T-01"]
+    },
+    {
+      "id": "T-03",
+      "priority": "P0",
+      "title": "Design leaderboard aggregation and gating rules",
+      "passes": false,
+      "related_requirements": [
+        "Aggregate benchmark outputs into leaderboard rankings",
+        "Leaderboard rankings must be derived only from persisted benchmark artifacts"
+      ],
+      "deliverables": [
+        "Leaderboard aggregation specification"
+      ],
+      "acceptance_criteria": [
+        "Ranking is deterministic",
+        "Compliance gating is enforced"
+      ],
+      "dependencies": ["T-01", "T-02"]
+    },
+    {
+      "id": "T-04",
+      "priority": "P1",
+      "title": "Define regression detection policy",
+      "passes": false,
+      "related_requirements": [
+        "Support comparison across agents, versions, and time"
+      ],
+      "deliverables": [
+        "Regression policy document"
+      ],
+      "acceptance_criteria": [
+        "Acceptable score deltas are defined"
+      ],
+      "dependencies": ["T-03"]
+    },
+    {
+      "id": "T-05",
+      "priority": "P0",
+      "title": "Define Purple Agent governance responsibilities",
+      "passes": true,
+      "related_requirements": [
+        "Oversee judge behavior and enforce governance policies"
+      ],
+      "deliverables": [
+        "Purple agent responsibility specification",
+        "Governance decision rules"
+      ],
+      "acceptance_criteria": [
+        "Purple agent has no direct scoring authority",
+        "Purple agent decisions are auditable"
+      ],
+      "dependencies": ["T-02", "T-03"]
+    }
+
+  ],
+  "traceability_and_audit": {
+    "persist_traces": true,
+    "trace_contents": [
+      "inputs",
+      "tool_calls",
+      "agent_outputs",
+      "judge_scores",
+      "timestamps"
+    ],
+    "audit_capabilities": [
+      "Replay evaluation",
+      "Explain leaderboard position",
+      "Compare historical runs"
+    ]
+  },
+  "architecture_principles": {
+    "paradigms": [
+      "Domain-Driven Design",
+      "Design Patterns",
+      "Hexagonal Architecture",
+      "Contract-First Design",
+      "Clean Architecture"
+    ],
+    "domain_concepts": [
+      "BenchmarkRun",
+      "Judgment",
+      "RubricScore",
+      "Trace",
+      "LeaderboardEntry"
+    ]
+  },
+  "success_metrics": {
+    "benchmark_reproducibility": "100%",
+    "judge_agreement_rate": ">= 85%",
+    "compliance_violation_rate": "< 1%",
+    "leaderboard_regression_detection": "Enabled"
+  },
+  "deployment": {
+    "containerization": {
+      "enabled": true,
+      "runtime": "Docker",
+      "purpose": [
+        "Reproducible benchmark execution",
+        "Isolated agent evaluation",
+        "CI/CD and audit reproducibility"
+      ],
+      "constraints": [
+        "No hardcoded secrets",
+        "Stateless containers",
+        "Deterministic builds"
+      ]
+    }
+  },
+  "integrations": {
+    "webhooks": {
+      "supported": true,
+      "events": [
+        "benchmark_completed",
+        "leaderboard_updated",
+        "compliance_violation_detected"
+      ],
+      "delivery_guarantees": [
+        "At-least-once",
+        "Signed payloads"
+      ],
+      "payload_format": "JSON"
+    }
+  },
+  "technology_stack": {
+    "language": {
+      "name": "Python",
+      "version": "3.11+",
+      "rationale": "Strong ecosystem for AI, data processing, async IO, and financial tooling."
+    },
+
+    "web_framework": {
+      "framework": "FastAPI",
+      "server": "Uvicorn",
+      "rationale": "Async-first, OpenAPI-native, and suitable for agent orchestration APIs."
+    },
+
+    "data_validation": {
+      "library": "Pydantic",
+      "version": "v2",
+      "rationale": "Schema-first validation aligned with contract-driven design."
+    },
+
+    "protocols": {
+      "supported": [
+        "Agent-to-Agent (A2A)",
+        "Model Context Protocol (MCP)"
+      ],
+      "rationale": "Enables agent interoperability and external orchestration."
+    },
+
+    "llm_providers": {
+      "supported": [
+        "OpenAI",
+        "Anthropic",
+        "DeepSeek",
+        "Ollama"
+      ],
+      "selection_strategy": "Provider-agnostic via adapters",
+      "rationale": "Avoid vendor lock-in and support local + hosted models."
+    },
+
+    "testing": {
+      "frameworks": [
+        "pytest",
+        "pytest-asyncio"
+      ],
+      "scope": [
+        "Domain logic",
+        "Agent contracts",
+        "Benchmark reproducibility",
+        "Judge consistency"
+      ]
+    },
+
+    "financial_dependencies": {
+      "libraries": [
+        "yfinance",
+        "sec-edgar-downloader",
+        "edgartools"
+      ],
+      "usage_constraints": [
+        "Read-only data access",
+        "No trading or execution capabilities",
+        "Used only for evidence ingestion"
+      ]
+    }
+  }
+}
+
