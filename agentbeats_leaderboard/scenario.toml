@@ -1,0 +1,44 @@
+[green_agent]
+agentbeats_id = "REPLACE_WITH_GREEN_AGENT_ID"
+env = {
+  OPENAI_API_KEY = "${OPENAI_API_KEY}",
+  SEC_API_KEY = "${SEC_API_KEY}",
+  LOG_LEVEL = "INFO"
+}
+
+[[participants]]
+name = "finance_competitor"
+agentbeats_id = ""
+env = {
+  OPENAI_API_KEY = "${OPENAI_API_KEY}",
+  RISK_APPETITE = "balanced"
+}
+
+[[participants]]
+name = "judge_adapter"
+agentbeats_id = ""
+env = {}
+
+[config]
+company_cik = "0000320193"
+analysis_type = "comprehensive"
+num_tasks = 3
+include_operational = true
+include_strategic = true
+include_risk = true
+rubrics = [
+  "factual_accuracy",
+  "source_fidelity",
+  "regulatory_compliance",
+  "financial_reasoning",
+  "materiality_relevance",
+  "completeness",
+  "consistency",
+  "temporal_validity",
+  "risk_awareness",
+  "clarity_interpretability",
+  "uncertainty_handling",
+  "actionability"
+]
+max_processing_seconds = 900
+pass_threshold = 1.5
