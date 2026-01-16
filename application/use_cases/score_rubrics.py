@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Union
+from enum import Enum
 
 from domain.models.evaluation import RubricEvaluation, RubricCategory
 from domain.models.finance import FinancialAnalysis
@@ -41,7 +42,7 @@ class ScoreRubricsUseCase:
 
         results: Dict[str, RubricEvaluation] = {}
         for rubric in rubric_list:
-            rubric_name = rubric.value if isinstance(rubric, RubricCategory) else str(rubric)
+            rubric_name = self._normalize_rubric_name(rubric)
             evaluation = self._score_rubric(
                 rubric_name,
                 analysis,
@@ -50,6 +51,19 @@ class ScoreRubricsUseCase:
             )
             results[rubric_name] = evaluation
         return results
+
+    def _normalize_rubric_name(
+        self, rubric: Union[RubricCategory, str, Enum]
+    ) -> str:
+        if isinstance(rubric, RubricCategory):
+            return rubric.value
+        if isinstance(rubric, Enum):
+            return getattr(rubric, "value", str(rubric))
+
+        name = str(rubric)
+        if "." in name:
+            name = name.split(".", 1)[-1]
+        return name.lower()
 
     async def calculate_composite_score(
         self,

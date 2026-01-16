@@ -122,17 +122,29 @@ class AgentRegistry:
 
     def register(self, name: str, agent: Any) -> None:
         self._agents[name] = agent
-        self._repository.save(name, agent)
+        sync_save = getattr(self._repository, "save_sync", None)
+        if callable(sync_save):
+            sync_save(name, agent)
+        else:
+            self._repository.save(name, agent)
 
     def get(self, name: str) -> Any:
         agent = self._agents.get(name)
         if agent is None:
-            agent = self._repository.find(name)
+            sync_find = getattr(self._repository, "find_sync", None)
+            if callable(sync_find):
+                agent = sync_find(name)
+            else:
+                agent = self._repository.find(name)
         return agent
 
     def unregister(self, name: str) -> None:
         self._agents.pop(name, None)
-        self._repository.delete(name)
+        sync_delete = getattr(self._repository, "delete_sync", None)
+        if callable(sync_delete):
+            sync_delete(name)
+        else:
+            self._repository.delete(name)
 
     def list_agents(self) -> Dict[str, Any]:
         return self._agents

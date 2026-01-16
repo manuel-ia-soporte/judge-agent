@@ -292,3 +292,18 @@ class JudgeAgent:
     def _process_rubrics(self, raw_scores: Dict[str, Any]) -> Dict[str, Any]:
         """Convert raw rubric scores into domain-friendly structures."""
         return self._evaluator.evaluate(raw_scores)
+
+    async def evaluate_with_use_case(
+        self, request: EvaluationRequest
+    ) -> EvaluationResult:
+        """Evaluate using the full application use case (all rubrics)."""
+        import time
+
+        if self._evaluate is None:
+            return await self.evaluate(request)
+
+        start_time = time.time()
+        result = await self._evaluate.execute(request)
+        processing_time = time.time() - start_time
+        self.metrics.record_evaluation(result.overall_score, processing_time)
+        return result

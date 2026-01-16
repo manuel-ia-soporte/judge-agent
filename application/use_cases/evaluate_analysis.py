@@ -95,9 +95,13 @@ class EvaluateAnalysisUseCase:
 
     def _parse_analysis_content(self, content: str) -> Dict[str, Any]:
         metrics: List[Dict[str, Union[str, float]]] = []
-        for match in re.finditer(r"(revenue|net income|eps|growth)[^$]*\$?([\d\.]+)", content, re.IGNORECASE):
+        for match in re.finditer(r"(revenue|net income|eps|growth)[^$]*\$?([\d,\.]+)", content, re.IGNORECASE):
             metric_name = match.group(1).strip().lower()
-            value = float(match.group(2)) if match.group(2) else 0.0
+            raw_value = match.group(2).replace(",", "") if match.group(2) else "0"
+            try:
+                value = float(raw_value)
+            except ValueError:
+                continue
             metrics.append({"metric": metric_name, "value": value})
 
         sentences = [s.strip() for s in re.split(r"[.!?]", content) if s.strip()]

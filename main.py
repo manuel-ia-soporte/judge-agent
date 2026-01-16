@@ -179,17 +179,11 @@ def create_app() -> FastAPI:
             agent_id=request.get("agent_id", "finance_agent"),
             analysis_content=request.get("analysis_content", ""),
             source_documents=request.get("source_documents", []),
-            rubrics_to_evaluate=[
-                RubricCategory.FACTUAL_ACCURACY,
-                RubricCategory.SOURCE_FIDELITY,
-                RubricCategory.COMPLETENESS,
-                RubricCategory.RISK_AWARENESS,
-                RubricCategory.CLARITY_INTERPRETABILITY,
-            ],
+            rubrics_to_evaluate=list(RubricCategory),
             context=request.get("context", {}),
         )
 
-        result = await container.judge_agent.evaluate(eval_request)
+        result = await container.judge_agent.evaluate_with_use_case(eval_request)
         return result
 
     return app
