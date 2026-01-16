@@ -69,13 +69,18 @@ class A2AServer:
                 data = json.dumps(message)
             await websocket.send_text(data)
 
-    async def send_to_agent(self, agent_id: str, message: A2AMessage) -> bool:
+    async def send_to_agent(self, agent_id: str, message: Any) -> bool:
         """Send a message to a specific agent."""
         websocket = self.active_connections.get(agent_id)
-        if websocket:
-            await websocket.send_text(message.model_dump_json())
-            return True
-        return False
+        if not websocket:
+            return False
+
+        if hasattr(message, "model_dump_json"):
+            payload = message.model_dump_json()
+        else:
+            payload = json.dumps(message)
+        await websocket.send_text(payload)
+        return True
 
     def get_connected_agents(self) -> list:
         """Get list of connected agent IDs."""

@@ -5,6 +5,7 @@ A2A Protocol Tests
 import pytest
 import asyncio
 import json
+import time
 from datetime import datetime
 from unittest.mock import Mock, AsyncMock, patch
 import sys

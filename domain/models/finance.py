@@ -66,7 +66,7 @@ class FinancialAnalysis:
     source_documents: List[Any]  # Can be SECDocument or dict
     conclusions: List[str]
     risks_identified: List[str]
-    assumptions: List[str]
+    assumptions: List[str] = field(default_factory=list)
     confidence_score: float = 1.0
     metadata: Dict[str, Any] = field(default_factory=dict)
 

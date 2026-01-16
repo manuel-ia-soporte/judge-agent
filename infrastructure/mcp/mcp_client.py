@@ -29,7 +29,8 @@ class MCPClient:
             self,
             method: str,
             params: Dict[str, Any],
-            tool_name: Optional[str] = None
+            tool_name: Optional[str] = None,
+            timeout: Optional[float] = None
     ) -> Dict[str, Any]:
         """Invoke MCP method"""
         self.request_id += 1
@@ -55,7 +56,8 @@ class MCPClient:
             response = await self.session.post(
                 url,
                 json=payload,
-                headers=headers
+                headers=headers,
+                timeout=timeout or self.timeout
             )
 
             if response.status_code == 200:
@@ -86,10 +88,14 @@ class MCPClient:
             arguments: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Call specific MCP tool"""
-        return await self.invoke("tools/call", {
-            "name": tool_name,
-            "arguments": arguments
-        })
+        return await self.invoke(
+            "tools/call",
+            {
+                "name": tool_name,
+                "arguments": arguments
+            },
+            tool_name=None
+        )
 
     async def list_tools(self) -> List[Dict[str, Any]]:
         """List available tools"""

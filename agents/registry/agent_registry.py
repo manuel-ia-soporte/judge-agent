@@ -90,10 +90,12 @@ class InMemoryAgentRepository:
         from datetime import datetime, timedelta
         if timeout_minutes is not None:
             threshold_seconds = timeout_minutes * 60
-        threshold = datetime.now() - timedelta(seconds=threshold_seconds)
+        threshold = datetime.utcnow() - timedelta(seconds=threshold_seconds)
         result = []
         for agent in self._storage.values():
             last_hb = getattr(agent, 'last_heartbeat', None)
+            if isinstance(last_hb, datetime) and last_hb.tzinfo is not None:
+                last_hb = last_hb.replace(tzinfo=None)
             if last_hb is None or last_hb < threshold:
                 result.append(agent)
         return result

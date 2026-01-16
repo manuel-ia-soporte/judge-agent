@@ -2,7 +2,7 @@
 import asyncio
 import json
 import uuid
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, List, Set
 from datetime import datetime
 
 from contracts.evaluation_contracts import A2AMessage
@@ -19,6 +19,7 @@ class A2AClient:
         self.pending_responses: Dict[str, asyncio.Future] = {}
         self.message_handlers: Dict[str, Callable] = {}
         self._listener_task: Optional[asyncio.Task] = None
+        self._known_agents: Set[str] = set()
 
     async def connect(self) -> None:
         """Connect to the A2A server."""
@@ -70,21 +71,25 @@ class A2AClient:
         message_type = message.get("message_type")
         if message_type in self.message_handlers:
             handler = self.message_handlers[message_type]
-            await handler(message)
+            if asyncio.iscoroutinefunction(handler):
+                await handler(message)
+            else:
+                handler(message)
 
     async def send_message(
         self,
         receiver_id: str,
         message_type: str,
         content: Dict[str, Any],
-        expect_response: bool = False,
-        timeout: float = 30.0
+        expect_response: bool = True,
+        timeout: float = 30.0,
+        correlation_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Send a message to another agent."""
         if not self.connected or not self.websocket:
             raise RuntimeError("Not connected")
 
-        correlation_id = str(uuid.uuid4()) if expect_response else None
+        corr_id = correlation_id or (str(uuid.uuid4()) if expect_response else None)
 
         message = {
             "message_id": str(uuid.uuid4()),
@@ -93,41 +98,50 @@ class A2AClient:
             "message_type": message_type,
             "content": content,
             "timestamp": datetime.utcnow().isoformat(),
-            "correlation_id": correlation_id,
+            "correlation_id": corr_id,
         }
 
         await self.websocket.send(json.dumps(message))
 
-        if expect_response and correlation_id:
-            future: asyncio.Future = asyncio.Future()
-            self.pending_responses[correlation_id] = future
+        if expect_response and corr_id:
+            future: asyncio.Future
+            existing_future = self.pending_responses.get(corr_id)
+            if existing_future is not None:
+                future = existing_future
+            else:
+                future = asyncio.Future()
+                self.pending_responses[corr_id] = future
             try:
-                return await asyncio.wait_for(future, timeout=timeout)
+                result = await asyncio.wait_for(future, timeout=timeout)
+                self.pending_responses.pop(corr_id, None)
+                return result
             except asyncio.TimeoutError:
-                self.pending_responses.pop(correlation_id, None)
-                raise
+                self.pending_responses.pop(corr_id, None)
+                raise TimeoutError("Response timed out")
 
         return None
 
     async def broadcast(
         self,
         message_type: str,
-        content: Dict[str, Any]
-    ) -> None:
-        """Broadcast a message to all agents."""
-        if not self.connected or not self.websocket:
-            raise RuntimeError("Not connected")
-
-        message = {
-            "message_id": str(uuid.uuid4()),
-            "sender_id": self.client_id,
-            "receiver_id": "*",  # Broadcast indicator
-            "message_type": message_type,
-            "content": content,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-
-        await self.websocket.send(json.dumps(message))
+        content: Dict[str, Any],
+        agent_filter: Optional[Callable[[str], bool]] = None,
+    ) -> List[Any]:
+        """Broadcast a message to known agents using unicast sends."""
+        responses = []
+        for agent_id in self._get_available_agents():
+            if agent_id == self.client_id:
+                continue
+            if agent_filter and not agent_filter(agent_id):
+                continue
+            response = await self.send_message(
+                receiver_id=agent_id,
+                message_type=message_type,
+                content=content,
+                expect_response=False,
+            )
+            responses.append(response)
+        return responses
 
     def register_handler(
         self,
@@ -140,3 +154,9 @@ class A2AClient:
     def unregister_handler(self, message_type: str) -> None:
         """Unregister a handler."""
         self.message_handlers.pop(message_type, None)
+
+    def _get_available_agents(self) -> List[str]:
+        return sorted(self._known_agents)
+
+    def update_known_agents(self, agents: List[str]) -> None:
+        self._known_agents = set(agents)

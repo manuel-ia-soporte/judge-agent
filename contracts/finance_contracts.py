@@ -1,5 +1,5 @@
 # contracts/finance_contracts.py
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, field_serializer
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -29,9 +29,9 @@ class SECFilingRequest(BaseModel):
     @field_validator('company_cik')
     @classmethod
     def validate_cik(cls, v):
-        if not v.isdigit() or len(v) > 10:
-            raise ValueError("CIK must be numeric and up to 10 digits")
-        return v.zfill(10)
+        if not v.isdigit() or len(v) > 13:
+            raise ValueError("CIK must be numeric and up to 13 digits")
+        return v.zfill(13)
 
 
 class FinancialMetricData(BaseModel):
@@ -93,3 +93,9 @@ class RiskAssessment(BaseModel):
     mitigations: List[str] = Field(default_factory=list)
     monitoring_indicators: List[str] = Field(default_factory=list)
     next_review_date: Optional[datetime] = None
+
+    @field_serializer('next_review_date')
+    def serialize_next_review(self, value: Optional[datetime], info) -> Optional[str]:
+        if value is None:
+            return None
+        return value.isoformat()

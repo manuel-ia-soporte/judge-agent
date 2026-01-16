@@ -1,5 +1,5 @@
 # contracts/judge_contracts.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Dict
 
 
@@ -44,3 +44,18 @@ class JudgeConfiguration(BaseModel):
     strict_mode: bool = Field(default=False)
     log_detailed: bool = Field(default=True)
     auto_calibrate: bool = Field(default=False)
+
+    @field_validator('pass_threshold')
+    @classmethod
+    def validate_pass_threshold(cls, value: float) -> float:
+        if not 0.5 <= value <= 2.0:
+            raise ValueError("pass_threshold must be between 0.5 and 2.0")
+        return value
+
+    @model_validator(mode='after')
+    def validate_scoring_weights(self) -> 'JudgeConfiguration':
+        weights = self.scoring_weights or {}
+        for name, weight in weights.items():
+            if weight < 0:
+                raise ValueError(f"scoring weight '{name}' must be non-negative")
+        return self

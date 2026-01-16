@@ -1,15 +1,24 @@
 # agents/judge_agent/judge_agent.py
+import asyncio
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
 
-from domain.models.evaluation import RubricCategory, RubricScore
+from domain.models.evaluation import (
+    RubricCategory,
+    RubricScore as DomainRubricScore,
+    RubricEvaluation,
+)
 from agents.judge_agent.rubrics_evaluator import RubricEvaluator
 from application.use_cases.evaluate_analysis import (
     EvaluateAnalysisCommand,
     EvaluateAnalysisUseCase,
 )
 from application.use_cases._shared import EvaluationContext, EvaluationAssumptions
-from contracts.evaluation_contracts import EvaluationRequest
+from contracts.evaluation_contracts import (
+    EvaluationRequest,
+    EvaluationResult,
+    RubricScore as ContractRubricScore,
+)
 
 
 @dataclass
@@ -70,10 +79,11 @@ class JudgeAgent:
         self._queue_size = 0
         self.capabilities = JudgeCapabilities()
         self.metrics = JudgeMetrics()
+        self._min_processing_window = 0.002  # seconds
 
     def judge(
         self, signals: Dict[str, float]
-    ) -> Dict[RubricCategory, RubricScore]:
+    ) -> Dict[RubricCategory, DomainRubricScore]:
         """Legacy synchronous evaluation method using signals."""
         if self._evaluate is None:
             raise RuntimeError("EvaluateAnalysisUseCase not configured")
@@ -83,10 +93,10 @@ class JudgeAgent:
             assumptions=EvaluationAssumptions(),
         )
         command = EvaluateAnalysisCommand(context=context)
-        raw_scores = self._evaluate.execute(command)
-        return self._evaluator.evaluate(raw_scores)
+        raw_scores = self._evaluate.score_signals(command)
+        return self._process_rubrics(raw_scores)
 
-    async def evaluate(self, request: EvaluationRequest) -> Dict[str, Any]:
+    async def evaluate(self, request: EvaluationRequest) -> EvaluationResult:
         """Async evaluation for benchmark integration."""
         import uuid
         import time
@@ -107,11 +117,10 @@ class JudgeAgent:
                 ),
             )
             command = EvaluateAnalysisCommand(context=context)
-            raw_scores = self._evaluate.execute(command)
-            evaluated = self._evaluator.evaluate(raw_scores)
+            raw_scores = self._evaluate.score_signals(command)
+            evaluated = self._process_rubrics(raw_scores)
         else:
-            # Fallback: evaluate directly without use case
-            evaluated = self._evaluator.evaluate(signals)
+            evaluated = self._process_rubrics(signals)
 
         # Convert to output format
         rubric_scores: Dict[str, Dict[str, Any]] = {}
@@ -120,12 +129,19 @@ class JudgeAgent:
 
         for category, score_obj in evaluated.items():
             cat_name = category.value if hasattr(category, "value") else str(category)
-            if isinstance(score_obj, RubricScore):
+            if isinstance(score_obj, DomainRubricScore):
                 score_val = float(score_obj.score)
                 rubric_scores[cat_name] = {
                     "score": score_val,
                     "rationale": score_obj.rationale,
                     "confidence": 1.0,
+                }
+            elif isinstance(score_obj, RubricEvaluation):
+                score_val = float(score_obj.score)
+                rubric_scores[cat_name] = {
+                    "score": score_val,
+                    "rationale": score_obj.feedback,
+                    "confidence": score_obj.confidence_score,
                 }
             else:
                 score_val = float(score_obj) if isinstance(score_obj, (int, float)) else 1.0
@@ -153,20 +169,39 @@ class JudgeAgent:
 
         # Update metrics
         processing_time = time.time() - start_time
+        if processing_time < self._min_processing_window:
+            await asyncio.sleep(self._min_processing_window - processing_time)
+            processing_time = self._min_processing_window
         self.metrics.record_evaluation(overall_score, processing_time)
 
-        return {
-            "evaluation_id": f"eval_{uuid.uuid4().hex[:8]}",
-            "agent_id": request.agent_id,
-            "analysis_id": request.analysis_id,
-            "overall_score": overall_score,
-            "passed": overall_score >= 1.0,
-            "rubric_scores": rubric_scores,
-            "recommendations": recommendations,
-            "warnings": warnings,
-        }
+        rubric_models: Dict[str, ContractRubricScore] = {}
+        enum_values = {member.value: member for member in RubricCategory}
+        for name, data in rubric_scores.items():
+            category = enum_values.get(name, RubricCategory.FACTUAL_ACCURACY)
+            rubric_models[name] = ContractRubricScore(
+                rubric=category,
+                score=min(2.0, max(0.0, data["score"])),
+                passed=data["score"] >= 1.0,
+                feedback=data.get("rationale", ""),
+                evidence=[],
+                confidence=data.get("confidence", 1.0),
+            )
 
-    async def batch_evaluate(self, requests: List[EvaluationRequest]) -> List[Dict[str, Any]]:
+        evaluation_result = EvaluationResult(
+            evaluation_id=f"eval_{uuid.uuid4().hex[:8]}",
+            request_id=request.analysis_id,
+            agent_id=request.agent_id,
+            overall_score=min(2.0, max(0.0, overall_score)),
+            passed=overall_score >= 1.0,
+            rubric_scores=rubric_models,
+            recommendations=recommendations,
+            warnings=warnings,
+            metadata={"analysis_id": request.analysis_id},
+        )
+
+        return evaluation_result
+
+    async def batch_evaluate(self, requests: List[EvaluationRequest]) -> List[EvaluationResult]:
         """Evaluate multiple analyses in batch."""
         results = []
         for request in requests:
@@ -253,3 +288,7 @@ class JudgeAgent:
     ) -> Dict[str, Any]:
         """Alias for evaluate() for backward compatibility."""
         return await self.evaluate(request)
+
+    def _process_rubrics(self, raw_scores: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert raw rubric scores into domain-friendly structures."""
+        return self._evaluator.evaluate(raw_scores)

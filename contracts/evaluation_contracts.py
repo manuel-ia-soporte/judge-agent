@@ -1,6 +1,6 @@
 # contracts/evaluation_contracts.py
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any, Literal, ClassVar
 from datetime import datetime
 from enum import Enum
 
@@ -44,10 +44,30 @@ class EvaluationRequest(BaseModel):
     minimum_threshold: Optional[float] = Field(default=1.0, ge=0, le=2)
     context: Dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator('analysis_id', 'agent_id')
+    @classmethod
+    def validate_required_strings(cls, v: str, field):
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError(f"{field.field_name} cannot be empty")
+        return v
+
     @field_validator('source_documents')
     @classmethod
     def validate_source_documents(cls, v):
-        # Accept any dict structure for flexibility in tests
+        if not v:
+            return []
+        required_identifiers = {"cik", "company_cik", "document_id"}
+        required_details = {"filing_type", "document_type"}
+
+        for doc in v:
+            if not isinstance(doc, dict):
+                raise ValueError("Each source document must be a dictionary")
+            if not any(key in doc for key in required_identifiers):
+                raise ValueError("Source document must include an identifier like CIK")
+            if not any(key in doc for key in required_details):
+                raise ValueError("Source document must include filing metadata")
+            if not any(key in doc for key in {"content", "document_url"}):
+                raise ValueError("Source document must include content or document_url")
         return v
 
 
@@ -69,22 +89,43 @@ class EvaluationResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     overall_score: float = Field(..., ge=0, le=2)
     passed: bool = Field(...)
-    rubric_scores: Dict[RubricCategory, RubricScore] = Field(...)
+    rubric_scores: Dict[str, RubricScore] = Field(...)
     recommendations: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        use_enum_values = True
-
 
 class A2AMessage(BaseModel):
     """A2A protocol message contract"""
+    ALLOWED_MESSAGE_TYPES: ClassVar[set[str]] = {
+        "evaluation_request",
+        "evaluation_result",
+        "heartbeat",
+        "test",
+        "test_message",
+        "broadcast",
+        "announcement",
+        "response",
+        "market_update",
+        "system",
+        "concurrent_test",
+        "performance_test",
+        "evaluation_response",
+        "evaluation_ack",
+    }
+
     message_id: str = Field(...)
     sender_id: str = Field(...)
     receiver_id: str = Field(...)
-    message_type: str = Field(...)  # Allow any message type
+    message_type: str = Field(...)
     content: Dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.now)
     correlation_id: Optional[str] = None
     priority: int = Field(default=1, ge=1, le=10)
+
+    @field_validator('message_type')
+    @classmethod
+    def validate_message_type(cls, value: str) -> str:
+        if value not in cls.ALLOWED_MESSAGE_TYPES:
+            raise ValueError(f"Unsupported message_type '{value}'")
+        return value

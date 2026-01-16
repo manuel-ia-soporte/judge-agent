@@ -1,18 +1,8 @@
 # infrastructure/a2a/message_broker.py
-from typing import Any, Callable, Dict, List, Optional, Set
-from collections import deque
-from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Set
 import asyncio
+import json
 from datetime import datetime, timedelta
-
-
-@dataclass
-class Message:
-    """A message in the queue."""
-    sender: str
-    recipient: str
-    payload: Dict[str, Any]
-    message_id: str = ""
 
 
 class MessageQueue:
@@ -26,14 +16,8 @@ class MessageQueue:
         self._ttl = timedelta(hours=1)
 
     async def put(self, message: Any) -> bool:
-        """Add a message to the queue. Returns False if duplicate."""
-        message_id = getattr(message, 'message_id', str(id(message)))
-
-        # Prevent duplicates
-        if message_id in self._seen_messages:
-            return False
-
-        if self.queue.full():
+        message_id = getattr(message, "message_id", str(id(message)))
+        if message_id in self._seen_messages or self.queue.full():
             return False
 
         self._seen_messages.add(message_id)
@@ -42,47 +26,30 @@ class MessageQueue:
         return True
 
     async def get(self, timeout: Optional[float] = None) -> Any:
-        """Get a message from the queue."""
         try:
-            if timeout:
+            if timeout is not None:
                 return await asyncio.wait_for(self.queue.get(), timeout=timeout)
             return await self.queue.get()
         except asyncio.TimeoutError:
             return None
 
-    def peek(self) -> Optional[Any]:
-        """Look at the next message without removing it."""
-        if not self.queue.empty():
-            # This is a workaround since asyncio.Queue doesn't have peek
-            return None
-        return None
-
-    def is_empty(self) -> bool:
-        """Check if the queue is empty."""
-        return self.queue.empty()
-
     def size(self) -> int:
-        """Get the number of messages in the queue."""
         return self.queue.qsize()
 
     @property
     def message_ids(self) -> Set[str]:
-        """Get set of message IDs that have been seen."""
-        return self._seen_messages
+        return set(self._seen_messages)
 
-    async def cleanup_expired(self) -> int:
-        """Remove expired messages. Returns count of removed messages."""
+    def cleanup_expired(self) -> int:
         now = datetime.utcnow()
-        expired = []
-
-        for msg_id, timestamp in list(self.message_timestamps.items()):
-            if now - timestamp > self._ttl:
-                expired.append(msg_id)
-
+        expired = [
+            msg_id
+            for msg_id, timestamp in self.message_timestamps.items()
+            if now - timestamp > self._ttl
+        ]
         for msg_id in expired:
             self._seen_messages.discard(msg_id)
-            del self.message_timestamps[msg_id]
-
+            self.message_timestamps.pop(msg_id, None)
         return len(expired)
 
 
@@ -90,98 +57,117 @@ class MessageBroker:
     """Routes messages between agents."""
 
     def __init__(self):
-        self._agents: Dict[str, Callable] = {}
-        self._queues: Dict[str, MessageQueue] = {}
-        self._subscriptions: Dict[str, Set[str]] = {}  # topic -> agent_ids
+        self.agent_queues: Dict[str, MessageQueue] = {}
+        self.agent_connections: Dict[str, Any] = {}
+        self.agent_subscriptions: Dict[str, Set[str]] = {}
+        self.message_handlers: Dict[str, Any] = {}
         self._stats = {
             "messages_routed": 0,
             "messages_dropped": 0,
-            "active_agents": 0,
-            "total_agents": 0,
+            "total_messages_logged": 0,
         }
 
-    async def register_agent(self, agent_id: str, handler: Callable = None) -> None:
-        """Register an agent with its message handler."""
-        self._agents[agent_id] = handler or (lambda x: None)
-        self._queues[agent_id] = MessageQueue()
-        self._stats["active_agents"] = len(self._agents)
-        self._stats["total_agents"] = len(self._agents)
+    async def register_agent(self, agent_id: str, connection: Any = None) -> None:
+        self.agent_queues[agent_id] = MessageQueue()
+        if connection is not None:
+            self.agent_connections[agent_id] = connection
 
     async def unregister_agent(self, agent_id: str) -> None:
-        """Unregister an agent."""
-        self._agents.pop(agent_id, None)
-        self._queues.pop(agent_id, None)
-        # Remove from all subscriptions
-        for subscribers in self._subscriptions.values():
+        self.agent_queues.pop(agent_id, None)
+        self.agent_connections.pop(agent_id, None)
+        for subscribers in self.agent_subscriptions.values():
             subscribers.discard(agent_id)
-        self._stats["active_agents"] = len(self._agents)
-        self._stats["total_agents"] = len(self._agents)
 
     async def subscribe_agent(self, agent_id: str, topic: str) -> None:
-        """Subscribe an agent to a topic (async alias)."""
-        self.subscribe(agent_id, topic)
+        self.agent_subscriptions.setdefault(topic, set()).add(agent_id)
 
     async def unsubscribe_agent(self, agent_id: str, topic: str) -> None:
-        """Unsubscribe an agent from a topic (async alias)."""
-        self.unsubscribe(agent_id, topic)
+        if topic in self.agent_subscriptions:
+            self.agent_subscriptions[topic].discard(agent_id)
 
     async def route_message(self, message: Any) -> bool:
-        """Route a message to the recipient."""
-        receiver_id = getattr(message, 'receiver_id', None)
-        if receiver_id is None:
-            receiver_id = getattr(message, 'recipient', None)
+        receiver_id = getattr(message, "receiver_id", None)
+        message_type = getattr(message, "message_type", "")
 
-        if receiver_id not in self._agents:
-            self._stats["messages_dropped"] += 1
-            raise ValueError(f"Unknown recipient: {receiver_id}")
-
-        queue = self._queues.get(receiver_id)
-        if queue:
-            await queue.put(message)
-            self._stats["messages_routed"] += 1
+        if receiver_id in {"broadcast", "*"} or message_type in {"broadcast", "announcement"}:
+            await self.broadcast(message)
             return True
 
-        return False
+        queue = self.agent_queues.get(receiver_id)
+        if not queue:
+            self._stats["messages_dropped"] += 1
+            return False
 
-    def subscribe(self, agent_id: str, topic: str) -> None:
-        """Subscribe an agent to a topic."""
-        if topic not in self._subscriptions:
-            self._subscriptions[topic] = set()
-        self._subscriptions[topic].add(agent_id)
+        stored = await queue.put(message)
+        if not stored:
+            self._stats["messages_dropped"] += 1
+            return False
 
-    def unsubscribe(self, agent_id: str, topic: str) -> None:
-        """Unsubscribe an agent from a topic."""
-        if topic in self._subscriptions:
-            self._subscriptions[topic].discard(agent_id)
+        self._stats["messages_routed"] += 1
+        self._stats["total_messages_logged"] += 1
 
-    async def broadcast(self, message: Any, topic: str = None) -> int:
-        """Broadcast a message to all agents or topic subscribers."""
-        count = 0
-        if topic and topic in self._subscriptions:
-            recipients = self._subscriptions[topic]
+        connection = self.agent_connections.get(receiver_id)
+        if connection:
+            payload = message.model_dump_json() if hasattr(message, "model_dump_json") else json.dumps(
+                {
+                    "message_id": getattr(message, "message_id", ""),
+                    "sender_id": getattr(message, "sender_id", ""),
+                    "receiver_id": receiver_id,
+                    "message_type": message_type,
+                    "content": getattr(message, "content", {}),
+                }
+            )
+            await connection.send_text(payload)
+        return True
+
+    async def broadcast(self, message: Any, topic: Optional[str] = None) -> int:
+        recipients: Set[str]
+        if topic and topic in self.agent_subscriptions:
+            recipients = set(self.agent_subscriptions[topic])
         else:
-            recipients = set(self._agents.keys())
-
+            recipients = set(self.agent_queues.keys())
+        sender = getattr(message, "sender_id", None)
+        delivered = 0
         for agent_id in recipients:
-            queue = self._queues.get(agent_id)
-            if queue:
-                await queue.put(message)
-                count += 1
+            if agent_id == sender:
+                continue
+            queue = self.agent_queues.get(agent_id)
+            if queue and await queue.put(message):
+                delivered += 1
                 self._stats["messages_routed"] += 1
+                self._stats["total_messages_logged"] += 1
+        return delivered
 
-        return count
+    async def get_messages(
+        self, agent_id: str, limit: Optional[int] = None, timeout: Optional[float] = None
+    ) -> List[Any]:
+        queue = self.agent_queues.get(agent_id)
+        if not queue:
+            return []
 
-    async def get_messages(self, agent_id: str, timeout: float = None) -> Optional[Any]:
-        """Get messages for an agent."""
-        queue = self._queues.get(agent_id)
-        if queue:
-            return await queue.get(timeout=timeout)
-        return None
+        messages: List[Any] = []
+        if queue.queue.qsize() == 0:
+            message = await queue.get(timeout=timeout)
+            if message is None:
+                return []
+            messages.append(message)
+
+        target = limit or queue.queue.qsize() + len(messages)
+        while len(messages) < target and not queue.queue.empty():
+            try:
+                messages.append(queue.queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        return messages
 
     def get_queue(self, agent_id: str) -> Optional[MessageQueue]:
-        """Get the message queue for an agent."""
-        return self._queues.get(agent_id)
+        return self.agent_queues.get(agent_id)
 
     def get_stats(self) -> Dict[str, Any]:
-        """Get broker statistics."""
-        return dict(self._stats)
+        return {
+            "total_agents": len(self.agent_queues),
+            "connected_agents": len(self.agent_connections),
+            "total_messages_logged": self._stats["total_messages_logged"],
+            "queue_sizes": {agent: queue.size() for agent, queue in self.agent_queues.items()},
+            "subscriptions": {topic: list(subs) for topic, subs in self.agent_subscriptions.items()},
+        }

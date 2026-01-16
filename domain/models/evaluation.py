@@ -1,7 +1,7 @@
 # domain/models/evaluation.py
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 
@@ -65,6 +65,7 @@ class Evaluation:
     passed: bool = False
     recommendations: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
     _threshold: float = 1.5
