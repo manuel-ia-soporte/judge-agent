@@ -73,7 +73,7 @@ class MarketQuote(BaseModel):
     dividend_yield: Optional[float] = Field(None, description="Dividend yield")
     high: Optional[float] = Field(None, description="Day's high")
     low: Optional[float] = Field(None, description="Day's low")
-    open: Optional[float] = Field(None, description="Opening price")
+    open_price: Optional[float] = Field(None, description="Opening price")
     previous_close: Optional[float] = Field(None, description="Previous close")
     timestamp: datetime = Field(..., description="Quote timestamp")
     currency: str = Field("USD", description="Currency")
@@ -82,8 +82,8 @@ class MarketQuote(BaseModel):
 class PriceDataPoint(BaseModel):
     """Historical price data point"""
 
-    date: date = Field(..., description="Date")
-    open: float = Field(..., description="Opening price")
+    data_date: date = Field(..., description="Date")
+    open_price: float = Field(..., description="Opening price")
     high: float = Field(..., description="High price")
     low: float = Field(..., description="Low price")
     close: float = Field(..., description="Closing price")

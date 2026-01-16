@@ -23,13 +23,13 @@ class FinancialMetricResponse(BaseModel):
     """Response contract for financial metric"""
 
     name: str
-    value: Decimal
-    unit: str
-    period: datetime
-    source_document_id: str
+    value: float
+    unit: Optional[str] = None
+    period: Optional[datetime] = None
+    source_document_id: Optional[str] = None
     footnote: Optional[str] = None
     is_estimated: bool = False
-    confidence: float = Field(ge=0.0, le=1.0)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class FinancialRatioResponse(BaseModel):
@@ -37,23 +37,23 @@ class FinancialRatioResponse(BaseModel):
 
     name: str
     value: float
-    category: str
-    calculation_method: str
+    category: Optional[str] = None
+    calculation_method: Optional[str] = None
     benchmark: Optional[float] = None
     industry_average: Optional[float] = None
-    is_favorable: bool
+    is_favorable: Optional[bool] = None
 
 
 class RiskFactorResponse(BaseModel):
     """Response contract for the risk factor"""
 
     description: str
-    category: str
-    severity: str
-    probability: float = Field(ge=0.0, le=1.0)
-    impact: str
+    category: Optional[str] = None
+    severity: Optional[str] = None
+    probability: float = Field(default=0.5, ge=0.0, le=1.0)
+    impact: Optional[str] = None
     mitigation: Optional[str] = None
-    risk_score: float = Field(ge=0.0, le=1.0)
+    risk_score: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class TrendAnalysisResponse(BaseModel):
@@ -100,7 +100,7 @@ class AnalysisResultResponse(BaseModel):
     confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "analysis_id": "analysis_123",
                 "company_cik": "0000320193",

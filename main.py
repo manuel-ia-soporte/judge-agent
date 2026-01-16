@@ -79,12 +79,11 @@ class DependencyContainer:
             strategic_analysis=strategic_port,
         )
         score_rubrics = ScoreRubricsUseCase(rubrics_service=rubrics_svc)
-        evaluate_use_case = EvaluateAnalysisUseCase(score_rubrics=score_rubrics)
+        evaluate_use_case = EvaluateAnalysisUseCase(score_rubrics_use_case=score_rubrics)
 
         # --- Agents ---
         strategy = FullAnalysisStrategy(
             risk_use_case=risk_use_case,
-            sec_port=sec_adapter,
             financial_service=financial_svc,
             operational_service=operational_svc,
             strategic_service=strategic_svc,
@@ -99,6 +98,14 @@ class DependencyContainer:
 
     def get_finance_agent(self) -> FinanceAgent:
         return self.finance_agent
+
+    async def start(self) -> None:
+        """Initialize any async resources."""
+        logger.info("DependencyContainer initialized")
+
+    async def shutdown(self) -> None:
+        """Cleanup resources on shutdown."""
+        logger.info("DependencyContainer shutting down")
 
 
 @asynccontextmanager
@@ -150,7 +157,40 @@ def create_app() -> FastAPI:
 
     @app.get("/agents")
     async def list_agents():
-        return {"agents": container.agent_registry.list_agents()}
+        agents_info = {}
+        for name, agent in container.agent_registry.list_agents().items():
+            agents_info[name] = {
+                "type": type(agent).__name__,
+                "capabilities": list(agent.list_capabilities().keys()) if hasattr(agent, 'list_capabilities') else []
+            }
+        return {"agents": agents_info}
+
+    @app.post("/api/v1/evaluate")
+    async def evaluate_analysis(request: dict):
+        """
+        Evaluate an analysis using the JudgeAgent.
+        Expected request body: {"analysis_content": "...", "agent_id": "..."}
+        """
+        import uuid
+        from contracts.evaluation_contracts import EvaluationRequest, RubricCategory
+
+        eval_request = EvaluationRequest(
+            analysis_id=request.get("analysis_id", f"eval_{uuid.uuid4().hex[:8]}"),
+            agent_id=request.get("agent_id", "finance_agent"),
+            analysis_content=request.get("analysis_content", ""),
+            source_documents=request.get("source_documents", []),
+            rubrics_to_evaluate=[
+                RubricCategory.FACTUAL_ACCURACY,
+                RubricCategory.SOURCE_FIDELITY,
+                RubricCategory.COMPLETENESS,
+                RubricCategory.RISK_AWARENESS,
+                RubricCategory.CLARITY_INTERPRETABILITY,
+            ],
+            context=request.get("context", {}),
+        )
+
+        result = await container.judge_agent.evaluate(eval_request)
+        return result
 
     return app
 

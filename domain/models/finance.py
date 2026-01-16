@@ -62,8 +62,8 @@ class FinancialAnalysis:
     company_ticker: str
     analysis_date: datetime
     content: str
-    metrics_used: List[FinancialMetric]
-    source_documents: List[SECDocument]
+    metrics_used: List[Any]  # Can be FinancialMetric or str
+    source_documents: List[Any]  # Can be SECDocument or dict
     conclusions: List[str]
     risks_identified: List[str]
     assumptions: List[str]

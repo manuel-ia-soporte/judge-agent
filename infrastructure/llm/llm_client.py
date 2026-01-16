@@ -18,6 +18,7 @@ class LLMProvider(str, Enum):
     """Supported LLM providers."""
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    OPENROUTER = "openrouter"
     AUTO = "auto"
 
 
@@ -84,8 +85,12 @@ class LLMClient:
         provider_str = self._provider_str.lower()
 
         if provider_str == "auto":
-            # Prefer OpenAI, fallback to Anthropic
-            if os.getenv("OPENAI_API_KEY"):
+            # Prefer OpenRouter, fallback to OpenAI, then Anthropic
+            if os.getenv("OPENROUTER_API_KEY"):
+                provider = LLMProvider.OPENROUTER
+                default_model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+                api_key = os.getenv("OPENROUTER_API_KEY", "")
+            elif os.getenv("OPENAI_API_KEY"):
                 provider = LLMProvider.OPENAI
                 default_model = "gpt-4o-mini"
                 api_key = os.getenv("OPENAI_API_KEY", "")
@@ -95,7 +100,7 @@ class LLMClient:
                 api_key = os.getenv("ANTHROPIC_API_KEY", "")
             else:
                 raise ValueError(
-                    "No API key found. Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable."
+                    "No API key found. Set OPENROUTER_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY."
                 )
         elif provider_str == "openai":
             provider = LLMProvider.OPENAI
@@ -109,6 +114,12 @@ class LLMClient:
             api_key = self._api_key or os.getenv("ANTHROPIC_API_KEY", "")
             if not api_key:
                 raise ValueError("ANTHROPIC_API_KEY not set")
+        elif provider_str == "openrouter":
+            provider = LLMProvider.OPENROUTER
+            default_model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+            api_key = self._api_key or os.getenv("OPENROUTER_API_KEY", "")
+            if not api_key:
+                raise ValueError("OPENROUTER_API_KEY not set")
         else:
             raise ValueError(f"Unsupported provider: {provider_str}")
 
@@ -138,7 +149,9 @@ class LLMClient:
         client = await self._ensure_client()
         t0 = time.perf_counter()
 
-        if provider == LLMProvider.OPENAI:
+        if provider == LLMProvider.OPENROUTER:
+            resp = await self._call_openrouter(client, api_key, model, prompt, system_prompt, **kwargs)
+        elif provider == LLMProvider.OPENAI:
             resp = await self._call_openai(client, api_key, model, prompt, system_prompt, **kwargs)
         elif provider == LLMProvider.ANTHROPIC:
             resp = await self._call_anthropic(client, api_key, model, prompt, system_prompt, **kwargs)
@@ -246,6 +259,56 @@ class LLMClient:
             input_tokens=usage.get("input_tokens", 0),
             output_tokens=usage.get("output_tokens", 0),
             total_tokens=usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+            raw_response=data,
+        )
+
+    async def _call_openrouter(
+        self,
+        client: httpx.AsyncClient,
+        api_key: str,
+        model: str,
+        prompt: str,
+        system_prompt: Optional[str],
+        **kwargs: Any,
+    ) -> LLMResponse:
+        """Call OpenRouter API - supports any model available on OpenRouter."""
+        messages: List[Dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": kwargs.get("temperature", self._temperature),
+            "max_tokens": kwargs.get("max_tokens", self._max_tokens),
+        }
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://finance-judge-system.local",
+            "X-Title": "Finance Judge System",
+        }
+
+        resp = await client.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            json=payload,
+            headers=headers,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        content = data["choices"][0]["message"]["content"]
+        usage = data.get("usage", {})
+
+        return LLMResponse(
+            content=content,
+            provider=LLMProvider.OPENROUTER,
+            model=model,
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
+            total_tokens=usage.get("total_tokens", 0),
             raw_response=data,
         )
 

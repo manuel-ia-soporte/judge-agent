@@ -1,5 +1,6 @@
 # agents/judge_agent/judge_agent.py
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass, field
 
 from domain.models.evaluation import RubricCategory, RubricScore
 from agents.judge_agent.rubrics_evaluator import RubricEvaluator
@@ -9,6 +10,41 @@ from application.use_cases.evaluate_analysis import (
 )
 from application.use_cases._shared import EvaluationContext, EvaluationAssumptions
 from contracts.evaluation_contracts import EvaluationRequest
+
+
+@dataclass
+class JudgeCapabilities:
+    """Capabilities of the judge agent."""
+    supported_rubrics: List[str] = field(default_factory=lambda: [
+        "factual_accuracy", "source_fidelity", "regulatory_compliance",
+        "financial_reasoning", "materiality_relevance", "completeness",
+        "consistency", "temporal_validity", "risk_awareness",
+        "clarity_interpretability", "uncertainty_handling", "actionability"
+    ])
+    max_concurrent_evaluations: int = 10
+    supports_batch: bool = True
+    supports_async: bool = True
+
+
+@dataclass
+class JudgeMetrics:
+    """Metrics for the judge agent."""
+    evaluations_completed: int = 0
+    evaluations_failed: int = 0
+    average_score: float = 0.0
+    total_processing_time: float = 0.0
+    _scores: List[float] = field(default_factory=list)
+
+    def record_evaluation(self, score: float, processing_time: float = 0.0) -> None:
+        """Record a completed evaluation."""
+        self.evaluations_completed += 1
+        self._scores.append(score)
+        self.average_score = sum(self._scores) / len(self._scores)
+        self.total_processing_time += processing_time
+
+    def record_failure(self) -> None:
+        """Record a failed evaluation."""
+        self.evaluations_failed += 1
 
 
 class JudgeAgent:
@@ -23,11 +59,17 @@ class JudgeAgent:
         evaluate_use_case: Optional[EvaluateAnalysisUseCase] = None,
         *,
         agent_id: str = "judge_agent",
+        configuration: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._evaluate = evaluate_use_case
         self._evaluator = RubricEvaluator()
         self.is_active: bool = True
         self.agent_id = agent_id
+        self.configuration = configuration or {}
+        self._status = "active"
+        self._queue_size = 0
+        self.capabilities = JudgeCapabilities()
+        self.metrics = JudgeMetrics()
 
     def judge(
         self, signals: Dict[str, float]
@@ -45,19 +87,13 @@ class JudgeAgent:
         return self._evaluator.evaluate(raw_scores)
 
     async def evaluate(self, request: EvaluationRequest) -> Dict[str, Any]:
-        """Async evaluation for benchmark integration.
+        """Async evaluation for benchmark integration."""
+        import uuid
+        import time
 
-        Evaluates the analysis content against all rubrics and returns
-        a dictionary with rubric_scores, recommendations, and warnings.
+        start_time = time.time()
 
-        Args:
-            request: EvaluationRequest with analysis content and context.
-
-        Returns:
-            Dictionary with rubric_scores, recommendations, warnings.
-        """
         # Extract signals from the analysis content
-        # This is a simplified implementation that uses basic heuristics
         signals = self._extract_signals_from_analysis(request)
 
         # Use the rubrics evaluator to score
@@ -79,23 +115,32 @@ class JudgeAgent:
 
         # Convert to output format
         rubric_scores: Dict[str, Dict[str, Any]] = {}
+        total_score = 0.0
+        count = 0
+
         for category, score_obj in evaluated.items():
             cat_name = category.value if hasattr(category, "value") else str(category)
             if isinstance(score_obj, RubricScore):
+                score_val = float(score_obj.score)
                 rubric_scores[cat_name] = {
-                    "score": score_obj.score,
+                    "score": score_val,
                     "rationale": score_obj.rationale,
                     "confidence": 1.0,
                 }
             else:
+                score_val = float(score_obj) if isinstance(score_obj, (int, float)) else 1.0
                 rubric_scores[cat_name] = {
-                    "score": int(score_obj) if isinstance(score_obj, (int, float)) else 1,
+                    "score": score_val,
                     "rationale": "Evaluated by judge agent",
                     "confidence": 1.0,
                 }
+            total_score += score_val
+            count += 1
 
-        recommendations: list[str] = []
-        warnings: list[str] = []
+        overall_score = total_score / count if count > 0 else 0.0
+
+        recommendations: List[str] = []
+        warnings: List[str] = []
 
         # Generate recommendations based on low scores
         for cat_name, score_data in rubric_scores.items():
@@ -106,20 +151,69 @@ class JudgeAgent:
         if not request.source_documents:
             warnings.append("No source documents provided for verification")
 
+        # Update metrics
+        processing_time = time.time() - start_time
+        self.metrics.record_evaluation(overall_score, processing_time)
+
         return {
+            "evaluation_id": f"eval_{uuid.uuid4().hex[:8]}",
+            "agent_id": request.agent_id,
+            "analysis_id": request.analysis_id,
+            "overall_score": overall_score,
+            "passed": overall_score >= 1.0,
             "rubric_scores": rubric_scores,
             "recommendations": recommendations,
             "warnings": warnings,
         }
 
+    async def batch_evaluate(self, requests: List[EvaluationRequest]) -> List[Dict[str, Any]]:
+        """Evaluate multiple analyses in batch."""
+        results = []
+        for request in requests:
+            result = await self.evaluate(request)
+            results.append(result)
+        return results
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get current agent status."""
+        return {
+            "agent_id": self.agent_id,
+            "status": self._status,
+            "is_active": self.is_active,
+            "metrics": {
+                "evaluations_completed": self.metrics.evaluations_completed,
+                "evaluations_failed": self.metrics.evaluations_failed,
+                "average_score": self.metrics.average_score,
+            },
+            "queue_size": self._queue_size,
+            "capabilities": {
+                "supported_rubrics": self.capabilities.supported_rubrics,
+                "supports_batch": self.capabilities.supports_batch,
+            },
+        }
+
+    async def stop(self) -> None:
+        """Stop the agent."""
+        self.is_active = False
+        self._status = "stopped"
+
+    def list_capabilities(self) -> Dict[str, Any]:
+        """List agent capabilities."""
+        return {
+            "evaluate": {
+                "description": "Evaluate financial analyses",
+                "rubrics": self.capabilities.supported_rubrics,
+            },
+            "batch_evaluate": {
+                "description": "Batch evaluate multiple analyses",
+                "max_batch_size": self.capabilities.max_concurrent_evaluations,
+            },
+        }
+
     def _extract_signals_from_analysis(
         self, request: EvaluationRequest
     ) -> Dict[str, float]:
-        """Extract evaluation signals from analysis content.
-
-        This is a simplified heuristic-based extraction. In production,
-        this would use more sophisticated NLP or an LLM.
-        """
+        """Extract evaluation signals from analysis content."""
         content = request.analysis_content.lower()
         signals: Dict[str, float] = {}
 

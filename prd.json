@@ -9,9 +9,9 @@
 
   "generation_constraints": {
     "project_type": "greenfield",
-    "assume_existing_codebase": false,
-    "overwrite_existing_files": false,
-    "require_empty_target_directory": true
+    "assume_existing_codebase": true,
+    "overwrite_existing_files": true,
+    "require_empty_target_directory": false
   },
 
   "primary_goals": {
