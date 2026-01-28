@@ -42,7 +42,7 @@ jobs:
 
       - name: Start agent container
         run: |
-          docker run -d -p 9009:9009 --name agent-container $(echo "${{ steps.meta.outputs.tags }}" | head -n1) --host 0.0.0.0 --port 9009
+          docker run -d -p 9009:9009 --name agent-container $(echo "${{ steps.meta.outputs.tags }}" | head -n1) --host 0.0.0.0 --port 9009 --card-url http://localhost:9009
           timeout 30 bash -c 'until curl -sf http://localhost:9009/.well-known/agent-card.json > /dev/null; do sleep 1; done'
 
       - name: Set up Python
@@ -67,7 +67,7 @@ jobs:
             httpx==0.28.1
 
       - name: Run tests
-        run: pytest -v
+        run: pytest -v --agent-url http://localhost:9009
 
       - name: Stop container and show logs
         if: always()

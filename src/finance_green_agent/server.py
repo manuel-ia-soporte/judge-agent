@@ -634,7 +634,21 @@ def main():
     parser = argparse.ArgumentParser(description="Run the Finance Green Agent server")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=9009)
+    parser.add_argument(
+        "--card-url",
+        dest="card_url",
+        default=None,
+        help="External URL to advertise in the agent card (e.g. http://localhost:9009)",
+    )
     args = parser.parse_args()
+
+    if args.card_url:
+        os.environ["FINANCE_GREEN_URL"] = str(args.card_url).rstrip("/")
+    elif "FINANCE_GREEN_URL" not in os.environ:
+        if args.host in {"0.0.0.0", "::"}:
+            os.environ["FINANCE_GREEN_URL"] = f"http://localhost:{args.port}"
+        else:
+            os.environ["FINANCE_GREEN_URL"] = f"http://{args.host}:{args.port}"
 
     import uvicorn
 

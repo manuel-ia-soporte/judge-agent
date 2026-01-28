@@ -20,8 +20,9 @@ COPY data ./data
 COPY scripts ./scripts
 
 ENV PYTHONPATH=/app/src
-ENV FINANCE_GREEN_URL=http://0.0.0.0:9009
+ENV FINANCE_GREEN_URL=http://localhost:9009
 
 EXPOSE 9009
 
-CMD ["python", "-m", "finance_green_agent.server", "--host", "0.0.0.0", "--port", "9009"]
+ENTRYPOINT ["python", "-m", "finance_green_agent.server"]
+CMD ["--host", "0.0.0.0", "--port", "9009"]
