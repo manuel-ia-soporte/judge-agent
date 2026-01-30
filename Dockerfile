@@ -3,7 +3,10 @@ FROM python:3.13-slim
 WORKDIR /app
 
 COPY pyproject.toml ./pyproject.toml
-RUN pip install --no-cache-dir --upgrade pip \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir \
         fastapi==0.115.6 \
         uvicorn==0.30.6 \
