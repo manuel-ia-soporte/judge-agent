@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 from uuid import uuid4
 
@@ -14,7 +15,11 @@ from .a2a_schemas import (
     AgentInterface,
     AgentProvider,
     AgentSkill,
+    AnswerRequest,
+    AnswerResponse,
     Artifact,
+    CreateWebhookRequest,
+    CreateWebhookResponse,
     Message,
     Part,
     Role,
@@ -24,17 +29,24 @@ from .a2a_schemas import (
     TaskArtifactUpdateEvent,
     TaskState,
     TaskStatusUpdateEvent,
+    WebhookConfig,
+    WebhookEvent,
     new_artifact,
     new_data_part,
     new_message,
     new_text_part,
 )
 from .green_eval import run_assessment
+from .leaderboard_client import LeaderboardClient, get_leaderboard_client
+from .purple_agent import run_purple_agent
 from .task_store import InMemoryTaskStore
 
 
 app = FastAPI(title="finance-green-agent")
 task_store = InMemoryTaskStore()
+
+# In-memory webhook storage (task_id -> list of WebhookConfig)
+webhook_store: dict[str, list[WebhookConfig]] = {}
 
 
 def _agent_url() -> str:
@@ -52,7 +64,7 @@ def _build_agent_card() -> AgentCard:
         additional_interfaces=[AgentInterface(url=base_url, transport="JSONRPC")],
         version=os.environ.get("FINANCE_GREEN_VERSION", "1.0.0"),
         provider=AgentProvider(url=base_url, organization="finance-green-agent"),
-        capabilities=AgentCapabilities(streaming=True, push_notifications=False),
+        capabilities=AgentCapabilities(streaming=True, push_notifications=True),
         default_input_modes=["text"],
         default_output_modes=["text"],
         skills=[
@@ -64,7 +76,16 @@ def _build_agent_card() -> AgentCard:
                 examples=["Run an offline AgentBeats evaluation."],
                 input_modes=["text"],
                 output_modes=["text"],
-            )
+            ),
+            AgentSkill(
+                id="finance-purple-answer",
+                name="SEC/EDGAR Question Answering",
+                description="Answers SEC/EDGAR finance questions using offline cached data.",
+                tags=["finance", "sec", "edgar", "qa"],
+                examples=["What was Apple's revenue in Q4 2024?"],
+                input_modes=["text"],
+                output_modes=["text"],
+            ),
         ],
         supports_authenticated_extended_card=False,
     )
@@ -608,26 +629,213 @@ async def subscribe_task(task_id: str) -> StreamingResponse:
 
 
 @app.post("/v1/tasks/{task_id}/pushNotificationConfigs")
-async def create_push_config(task_id: str) -> JSONResponse:
-    raise HTTPException(
-        status_code=400,
-        detail="Push notifications are not supported by this agent.",
+async def create_push_config(task_id: str, payload: dict[str, Any]) -> JSONResponse:
+    """Create a webhook/push notification configuration for a task."""
+    task = task_store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    try:
+        request = CreateWebhookRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.errors()) from exc
+
+    config = WebhookConfig(
+        url=request.url,
+        token=request.token,
+        events=request.events,
+        authentication=request.authentication,
     )
+
+    if task_id not in webhook_store:
+        webhook_store[task_id] = []
+    webhook_store[task_id].append(config)
+
+    return _json_response(CreateWebhookResponse(config=config))
 
 
 @app.get("/v1/tasks/{task_id}/pushNotificationConfigs")
 async def list_push_configs(task_id: str) -> JSONResponse:
-    return JSONResponse(content={"configs": [], "nextPageToken": ""})
+    """List all webhook configurations for a task."""
+    configs = webhook_store.get(task_id, [])
+    return JSONResponse(
+        content={
+            "configs": [_dump_model(c) for c in configs],
+            "nextPageToken": "",
+        }
+    )
 
 
 @app.get("/v1/tasks/{task_id}/pushNotificationConfigs/{config_id}")
 async def get_push_config(task_id: str, config_id: str) -> JSONResponse:
+    """Get a specific webhook configuration."""
+    configs = webhook_store.get(task_id, [])
+    for config in configs:
+        if config.id == config_id:
+            return _json_response(config)
     raise HTTPException(status_code=404, detail="Push notification config not found")
 
 
 @app.delete("/v1/tasks/{task_id}/pushNotificationConfigs/{config_id}")
 async def delete_push_config(task_id: str, config_id: str) -> JSONResponse:
+    """Delete a webhook configuration."""
+    if task_id in webhook_store:
+        webhook_store[task_id] = [
+            c for c in webhook_store[task_id] if c.id != config_id
+        ]
     return JSONResponse(content={})
+
+
+# =============================================================================
+# Purple Agent Endpoints - Answer SEC/EDGAR questions
+# =============================================================================
+
+
+@app.post("/v1/answer")
+async def answer_question(payload: dict[str, Any]) -> JSONResponse:
+    """
+    Purple agent endpoint: Answer a SEC/EDGAR question using offline tools.
+    
+    Request body:
+    {
+        "question": "What was Apple's revenue in Q4 2024?",
+        "session_id": "optional-session-id",
+        "config": {}
+    }
+    """
+    try:
+        request = AnswerRequest.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.errors()) from exc
+
+    result = await run_purple_agent(request.question, request.session_id)
+
+    if result.get("error"):
+        return _json_response(
+            AnswerResponse(
+                answer="",
+                error=result["error"],
+                metadata=result.get("metadata", {}),
+            )
+        )
+
+    # Extract sources from the answer if present
+    answer_text = result.get("answer", "")
+    sources = []
+    try:
+        import re
+        match = re.search(r'(\{"sources".*\})', answer_text, re.DOTALL)
+        if match:
+            import json as json_mod
+            sources_data = json_mod.loads(match.group(1))
+            sources = sources_data.get("sources", [])
+    except Exception:
+        pass
+
+    return _json_response(
+        AnswerResponse(
+            answer=answer_text,
+            sources=sources,
+            metadata=result.get("metadata", {}),
+        )
+    )
+
+
+# =============================================================================
+# Webhook / Leaderboard Integration Endpoints
+# =============================================================================
+
+
+async def _trigger_webhooks(task_id: str, event_type: str, data: dict[str, Any]) -> None:
+    """Trigger all registered webhooks for a task."""
+    configs = webhook_store.get(task_id, [])
+    task = task_store.get_task(task_id)
+    
+    for config in configs:
+        if event_type not in config.events:
+            continue
+        
+        event = WebhookEvent(
+            event_type=event_type,
+            task_id=task_id,
+            context_id=task.context_id if task else None,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            data=data,
+        )
+        
+        client = LeaderboardClient(
+            webhook_url=config.url,
+            webhook_token=config.token,
+        )
+        
+        try:
+            await client.notify_evaluation_complete(
+                task_id=task_id,
+                evaluation_result=data,
+                callback_url=config.url,
+            )
+        except Exception:
+            pass  # Log but don't fail
+
+
+@app.post("/v1/webhook/leaderboard")
+async def send_to_leaderboard(payload: dict[str, Any]) -> JSONResponse:
+    """
+    Manually trigger sending evaluation results to the leaderboard.
+    
+    Request body:
+    {
+        "task_id": "task-id-with-results",
+        "event_type": "evaluation-complete"
+    }
+    """
+    task_id = payload.get("task_id")
+    if not task_id:
+        raise HTTPException(status_code=400, detail="task_id is required")
+
+    task = task_store.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Extract evaluation result from task artifacts
+    evaluation_result = {}
+    for artifact in task.artifacts:
+        for part in artifact.parts:
+            if part.data is not None:
+                evaluation_result = part.data.data
+                break
+
+    if not evaluation_result:
+        raise HTTPException(status_code=400, detail="No evaluation result found in task")
+
+    client = get_leaderboard_client()
+    result = await client.send_results(
+        evaluation_result=evaluation_result,
+        event_type=payload.get("event_type", "evaluation-complete"),
+    )
+
+    return JSONResponse(content=result)
+
+
+@app.post("/v1/webhook/test")
+async def test_webhook(payload: dict[str, Any]) -> JSONResponse:
+    """Test webhook connectivity by sending a test event."""
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="url is required")
+
+    client = LeaderboardClient(
+        webhook_url=url,
+        webhook_token=payload.get("token"),
+    )
+
+    result = await client.notify_evaluation_complete(
+        task_id="test-task-id",
+        evaluation_result={"test": True, "message": "Webhook test from finance-green-agent"},
+        callback_url=url,
+    )
+
+    return JSONResponse(content=result)
 
 
 def main():

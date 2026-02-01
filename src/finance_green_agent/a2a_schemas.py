@@ -258,3 +258,51 @@ def new_artifact(
     metadata: dict[str, Any] | None = None,
 ) -> Artifact:
     return Artifact(name=name, description=description, parts=parts, metadata=metadata)
+
+
+# Webhook / Push Notification schemas for leaderboard integration
+
+class WebhookConfig(A2ABaseModel):
+    """Configuration for webhook callbacks."""
+    id: str = Field(default_factory=lambda: uuid4().hex)
+    url: str
+    token: str | None = None
+    events: list[str] = Field(default_factory=lambda: ["task.completed", "task.failed"])
+    authentication: PushNotificationAuthenticationInfo | None = None
+
+
+class WebhookEvent(A2ABaseModel):
+    """Event payload sent to webhook endpoints."""
+    event_type: str
+    task_id: str
+    context_id: str | None = None
+    timestamp: str | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class CreateWebhookRequest(A2ABaseModel):
+    """Request to create a webhook configuration."""
+    url: str
+    token: str | None = None
+    events: list[str] = Field(default_factory=lambda: ["task.completed", "task.failed"])
+    authentication: PushNotificationAuthenticationInfo | None = None
+
+
+class CreateWebhookResponse(A2ABaseModel):
+    """Response after creating a webhook configuration."""
+    config: WebhookConfig
+
+
+class AnswerRequest(A2ABaseModel):
+    """Request for the purple agent to answer a question."""
+    question: str
+    session_id: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class AnswerResponse(A2ABaseModel):
+    """Response from the purple agent with the answer."""
+    answer: str
+    sources: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
